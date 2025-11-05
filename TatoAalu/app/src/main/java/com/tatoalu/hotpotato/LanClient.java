@@ -25,7 +25,7 @@ public class LanClient {
     private Socket socket;
     private PrintWriter out;
     private BufferedReader in;
-    private Thread listenerThread;
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     
     // जडान अवस्था (Connection state)
     private volatile boolean connected = false;
@@ -65,7 +65,7 @@ public class LanClient {
         connecting = true;
         
         // पृष्ठभूमि थ्रेडमा जडान गर्नुहोस् (Connect in background thread)
-        new Thread(() -> {
+        executor.execute(() -> {
             try {
                 Log.i(TAG, "सर्भरमा जडान गर्दै: " + serverHost + ":" + serverPort + " (Connecting to server: " + serverHost + ":" + serverPort + ")");
                 
@@ -95,7 +95,7 @@ public class LanClient {
                 notifyError("सर्भर जडान असफल: " + e.getMessage());
                 cleanup();
             }
-        }, "LanClient-Connect").start();
+        });
     }
 
     // जडान सन्देश पठाउनुहोस् (Send join message)
@@ -113,7 +113,7 @@ public class LanClient {
 
     // सन्देश श्रोता सुरु गर्नुहोस् (Start message listener)
     private void startMessageListener() {
-        listenerThread = new Thread(() -> {
+        executor.execute(() -> {
             try {
                 String inputLine;
                 while (connected && (inputLine = in.readLine()) != null) {
@@ -129,9 +129,7 @@ public class LanClient {
             } finally {
                 disconnect();
             }
-        }, "LanClient-Listener");
-        
-        listenerThread.start();
+        });
     }
 
     // सन्देश ह्यान्डल गर्नुहोस् (Handle message)
@@ -225,10 +223,7 @@ public class LanClient {
         connected = false;
         connecting = false;
         
-        // श्रोता थ्रेड बन्द गर्नुहोस् (Stop listener thread)
-        if (listenerThread != null && listenerThread.isAlive()) {
-            listenerThread.interrupt();
-        }
+        executor.shutdown();
         
         cleanup();
         

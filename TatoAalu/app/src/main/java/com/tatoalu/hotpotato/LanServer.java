@@ -74,21 +74,30 @@ public class LanServer {
 
         // क्लाइन्ट जडानहरू स्वीकार गर्नुहोस् (Accept client connections)
         threadPool.execute(() -> {
-            while (running && !Thread.currentThread().isInterrupted()) {
-                try {
-                    Socket clientSocket = serverSocket.accept();
-                    if (running) {
-                        ClientHandler handler = new ClientHandler(clientSocket);
-                        clients.add(handler);
-                        threadPool.execute(handler);
-                        Log.i(TAG, "नयाँ क्लाइन्ट जडान स्वीकार गरियो (New client connection accepted)");
+            try {
+                while (running && !Thread.currentThread().isInterrupted()) {
+                    try (Socket clientSocket = serverSocket.accept()) {
+                        if (running) {
+                            ClientHandler handler = new ClientHandler(clientSocket);
+                            clients.add(handler);
+                            threadPool.execute(handler);
+                            Log.i(TAG, "नयाँ क्लाइन्ट जडान स्वीकार गरियो (New client connection accepted)");
+                        }
+                    } catch (SocketTimeoutException e) {
+                        // सामान्य टाइमआउट, जारी राख्नुहोस् (Normal timeout, continue)
+                    } catch (IOException e) {
+                        if (running) {
+                            Log.e(TAG, "क्लाइन्ट जडान स्वीकार गर्न त्रुटि (Error accepting client connection)", e);
+                            notifyError("क्लाइन्ट जडान त्रुटि: " + e.getMessage());
+                        }
                     }
-                } catch (SocketTimeoutException e) {
-                    // सामान्य टाइमआउट, जारी राख्नुहोस् (Normal timeout, continue)
-                } catch (IOException e) {
-                    if (running) {
-                        Log.e(TAG, "क्लाइन्ट जडान स्वीकार गर्न त्रुटि (Error accepting client connection)", e);
-                        notifyError("क्लाइन्ट जडान त्रुटि: " + e.getMessage());
+                }
+            } finally {
+                if (serverSocket != null && !serverSocket.isClosed()) {
+                    try {
+                        serverSocket.close();
+                    } catch (IOException e) {
+                        Log.e(TAG, "सर्भर सकेट बन्द गर्न त्रुटि (Error closing server socket)", e);
                     }
                 }
             }
