@@ -159,6 +159,12 @@ public class GameActivity extends AppCompatActivity {
                     playerNames.remove(playerName);
                     gameView.setPlayerNames(playerNames);
                     updatePlayerStatus();
+                    if (playerNames.isEmpty()) {
+                        new AlertDialog.Builder(GameActivity.this)
+                            .setMessage("All players have left the game.")
+                            .setPositiveButton("OK", (dialog, which) -> finish())
+                            .show();
+                    }
                 });
             }
 
