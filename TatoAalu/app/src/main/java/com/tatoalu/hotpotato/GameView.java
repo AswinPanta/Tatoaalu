@@ -195,7 +195,7 @@ public class GameView extends View {
         invalidate();
     }
     public void setPlayerNames(List<String> names) {
-        if (names == null) return;
+        if (names == null || names.isEmpty()) return; // Prevent crash if all players leave
         this.pendingPlayerNames.clear();
         this.pendingPlayerNames.addAll(names);
         rebuildPlayersList();
