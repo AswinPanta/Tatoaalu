@@ -188,10 +188,9 @@ public class MainActivity extends AppCompatActivity implements UnifiedMultiplaye
     private UnifiedMultiplayerManager.ConnectionMode getSelectedConnectionMode() {
         int position = connectionModeSpinner.getSelectedItemPosition();
         switch (position) {
-            case 0: return UnifiedMultiplayerManager.ConnectionMode.AUTO_FALLBACK;
-            case 1: return UnifiedMultiplayerManager.ConnectionMode.LAN_ONLY;
-            case 2: return UnifiedMultiplayerManager.ConnectionMode.FIREBASE_ONLY;
-            default: return UnifiedMultiplayerManager.ConnectionMode.AUTO_FALLBACK;
+            case 0: return UnifiedMultiplayerManager.ConnectionMode.LAN_ONLY;
+            case 1: return UnifiedMultiplayerManager.ConnectionMode.FIREBASE_ONLY;
+            default: return UnifiedMultiplayerManager.ConnectionMode.LAN_ONLY;
         }
     }
 
@@ -294,14 +293,6 @@ public class MainActivity extends AppCompatActivity implements UnifiedMultiplaye
         });
     }
 
-    @Override
-    public void onFallbackActivated(UnifiedMultiplayerManager.NetworkType fromType, 
-                                  UnifiedMultiplayerManager.NetworkType toType) {
-        runOnUiThread(() -> {
-            Toast.makeText(this, "फलब्याक सक्रिय: " + fromType + " -> " + toType, 
-                         Toast.LENGTH_SHORT).show();
-        });
-    }
 
     // नाम फिल्डहरूको दृश्यता अपडेट गर्नुहोस् (Update name fields visibility)
     private void updateNameFieldsVisibility(int count) {

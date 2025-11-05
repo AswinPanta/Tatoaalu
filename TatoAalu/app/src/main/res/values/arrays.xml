@@ -12,7 +12,6 @@
     </string-array>
     
     <string-array name="connection_modes">
-        <item>Auto (LAN → Firebase)</item>
         <item>LAN Only</item>
         <item>Firebase Only</item>
     </string-array>

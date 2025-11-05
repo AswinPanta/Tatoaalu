@@ -20,11 +20,8 @@ public class UnifiedMultiplayerManager {
     
     // Connection modes in priority order
     public enum ConnectionMode {
-        AUTO_FALLBACK,    // Try LAN first, then Wi-Fi Direct, then Firebase
         LAN_ONLY,         // Network Service Discovery only
-        WIFI_DIRECT_ONLY, // Wi-Fi Direct P2P only
-        FIREBASE_ONLY,    // Firebase Realtime Database only
-        HYBRID           // Use multiple modes simultaneously
+        FIREBASE_ONLY    // Firebase Realtime Database only
     }
     
     public enum ConnectionState {
@@ -37,20 +34,17 @@ public class UnifiedMultiplayerManager {
     public enum NetworkType {
         NONE,
         LAN_NSD,
-        WIFI_DIRECT,
         FIREBASE,
-        HYBRID
     }
     
     private final Context context;
-    private ConnectionMode connectionMode = ConnectionMode.AUTO_FALLBACK;
+    private ConnectionMode connectionMode = ConnectionMode.LAN_ONLY;
     private ConnectionState connectionState = ConnectionState.DISCONNECTED;
     private NetworkType activeNetworkType = NetworkType.NONE;
     
     // Networking components
     private FirebaseRealtimeMultiplayer firebaseMultiplayer;
     private NsdHelper nsdHelper;
-    private WiFiDirectHelper wifiDirectHelper;
     private LanServer lanServer;
     private LanClient lanClient;
     
@@ -72,7 +66,6 @@ public class UnifiedMultiplayerManager {
         void onPlayerLeft(String playerId, String playerName, NetworkType networkType);
         void onHostChanged(String newHostId, NetworkType networkType);
         void onNetworkError(String error, NetworkType networkType);
-        void onFallbackActivated(NetworkType fromType, NetworkType toType);
     }
     
     public interface GameEventListener {
@@ -120,10 +113,6 @@ public class UnifiedMultiplayerManager {
         nsdHelper = new NsdHelper(context);
         setupNsdListeners();
         
-        // Initialize Wi-Fi Direct helper
-        wifiDirectHelper = new WiFiDirectHelper(context);
-        setupWiFiDirectListeners();
-        
         Log.d(TAG, "Unified multiplayer manager initialized");
     }
     
@@ -143,19 +132,8 @@ public class UnifiedMultiplayerManager {
             case LAN_ONLY:
                 createLanRoom(maxPlayers);
                 break;
-            case WIFI_DIRECT_ONLY:
-                createWiFiDirectRoom();
-                break;
             case FIREBASE_ONLY:
                 createFirebaseRoom(maxPlayers);
-                break;
-            case AUTO_FALLBACK:
-                // Try LAN first
-                createLanRoom(maxPlayers);
-                break;
-            case HYBRID:
-                // Create on multiple networks
-                createHybridRoom(maxPlayers);
                 break;
         }
     }
@@ -177,19 +155,8 @@ public class UnifiedMultiplayerManager {
             case LAN_ONLY:
                 joinLanRoom(roomCode);
                 break;
-            case WIFI_DIRECT_ONLY:
-                joinWiFiDirectRoom();
-                break;
             case FIREBASE_ONLY:
                 joinFirebaseRoom(roomCode);
-                break;
-            case AUTO_FALLBACK:
-                // Try to discover room on LAN first
-                discoverAndJoinRoom(roomCode);
-                break;
-            case HYBRID:
-                // Try to join on multiple networks
-                joinHybridRoom(roomCode);
                 break;
         }
     }
@@ -213,14 +180,6 @@ public class UnifiedMultiplayerManager {
                 if (lanServer != null) {
                     lanServer.broadcastGameStarted();
                 }
-                break;
-            case WIFI_DIRECT:
-                // Implement Wi-Fi Direct game start
-                startWiFiDirectGame();
-                break;
-            case HYBRID:
-                // Start on all active networks
-                startHybridGame();
                 break;
         }
     }
@@ -248,14 +207,6 @@ public class UnifiedMultiplayerManager {
                     Log.d(TAG, "Server received pass request for: " + targetPlayerId);
                 }
                 break;
-            case WIFI_DIRECT:
-                // Implement Wi-Fi Direct potato passing
-                passPotatoWiFiDirect(targetPlayerId);
-                break;
-            case HYBRID:
-                // Pass on all active networks
-                passPotatoHybrid(targetPlayerId);
-                break;
         }
     }
     
@@ -275,14 +226,6 @@ public class UnifiedMultiplayerManager {
                 if (lanServer != null) {
                     lanServer.broadcastTick(remainingMs);
                 }
-                break;
-            case WIFI_DIRECT:
-                // Implement Wi-Fi Direct tick broadcast
-                broadcastWiFiDirectTick(remainingMs);
-                break;
-            case HYBRID:
-                // Broadcast on all active networks
-                broadcastHybridTick(remainingMs);
                 break;
         }
     }
@@ -305,14 +248,6 @@ public class UnifiedMultiplayerManager {
                 if (lanServer != null) {
                     lanServer.broadcastBurn(loserName);
                 }
-                break;
-            case WIFI_DIRECT:
-                // Implement Wi-Fi Direct game over broadcast
-                broadcastWiFiDirectGameOver(loserName);
-                break;
-            case HYBRID:
-                // Broadcast on all active networks
-                broadcastHybridGameOver(loserName);
                 break;
         }
     }
@@ -349,15 +284,6 @@ public class UnifiedMultiplayerManager {
                     nsdHelper.stopDiscovery();
                 }
                 break;
-            case WIFI_DIRECT:
-                if (wifiDirectHelper != null) {
-                    wifiDirectHelper.disconnect();
-                }
-                break;
-            case HYBRID:
-                // Clean up all networks
-                leaveAllNetworks();
-                break;
         }
         
         // Reset state
@@ -389,21 +315,8 @@ public class UnifiedMultiplayerManager {
             
         } catch (Exception e) {
             Log.e(TAG, "Failed to create LAN room", e);
-            if (connectionMode == ConnectionMode.AUTO_FALLBACK) {
-                // Fallback to Wi-Fi Direct
-                createWiFiDirectRoom();
-            } else {
-                notifyError("Failed to create LAN room: " + e.getMessage(), NetworkType.LAN_NSD);
-            }
+            notifyError("Failed to create LAN room: " + e.getMessage(), NetworkType.LAN_NSD);
         }
-    }
-    
-    private void createWiFiDirectRoom() {
-        wifiDirectHelper.registerReceiver();
-        wifiDirectHelper.createGroup();
-        
-        activeNetworkType = NetworkType.WIFI_DIRECT;
-        // Connection state will be updated by Wi-Fi Direct callbacks
     }
     
     private void createFirebaseRoom(int maxPlayers) {
@@ -412,111 +325,15 @@ public class UnifiedMultiplayerManager {
         // Connection state will be updated by Firebase callbacks
     }
     
-    private void createHybridRoom(int maxPlayers) {
-        // Create on multiple networks simultaneously
-        createLanRoom(maxPlayers);
-        createFirebaseRoom(maxPlayers);
-        activeNetworkType = NetworkType.HYBRID;
-    }
-    
     private void joinLanRoom(String roomCode) {
         // Start NSD discovery to find the room
         nsdHelper.discoverServices();
         // Connection will be established in NSD callbacks
     }
     
-    private void joinWiFiDirectRoom() {
-        wifiDirectHelper.registerReceiver();
-        wifiDirectHelper.startPeerDiscovery();
-        activeNetworkType = NetworkType.WIFI_DIRECT;
-    }
-    
     private void joinFirebaseRoom(String roomCode) {
         firebaseMultiplayer.joinRoom(roomCode);
         activeNetworkType = NetworkType.FIREBASE;
-    }
-    
-    private void discoverAndJoinRoom(String roomCode) {
-        // Try LAN discovery first
-        nsdHelper.discoverServices();
-        
-        // Set a timeout to fallback to other methods
-        new android.os.Handler().postDelayed(() -> {
-            if (connectionState != ConnectionState.CONNECTED) {
-                Log.d(TAG, "LAN discovery timeout, trying Wi-Fi Direct");
-                joinWiFiDirectRoom();
-            }
-        }, 5000); // 5 second timeout
-    }
-    
-    private void joinHybridRoom(String roomCode) {
-        // Try to join on multiple networks
-        joinLanRoom(roomCode);
-        joinFirebaseRoom(roomCode);
-        activeNetworkType = NetworkType.HYBRID;
-    }
-    
-    private void startWiFiDirectGame() {
-        // Implement Wi-Fi Direct specific game start logic
-        Log.d(TAG, "Starting Wi-Fi Direct game");
-    }
-    
-    private void startHybridGame() {
-        // Start game on all active networks
-        if (firebaseMultiplayer != null) {
-            firebaseMultiplayer.startGame();
-        }
-        if (lanServer != null) {
-            lanServer.broadcastGameStarted();
-        }
-        startWiFiDirectGame();
-    }
-    
-    private void passPotatoWiFiDirect(String targetPlayerId) {
-        // Implement Wi-Fi Direct specific potato passing
-        Log.d(TAG, "Passing potato via Wi-Fi Direct to: " + targetPlayerId);
-    }
-    
-    private void passPotatoHybrid(String targetPlayerId) {
-        // Pass potato on all active networks
-        if (firebaseMultiplayer != null) {
-            firebaseMultiplayer.passPotatoTo(targetPlayerId);
-        }
-        if (lanClient != null) {
-            try {
-                int targetId = Integer.parseInt(targetPlayerId);
-                lanClient.sendPassRequest(targetId);
-            } catch (NumberFormatException e) {
-                Log.e(TAG, "Invalid target player ID: " + targetPlayerId);
-            } catch (Exception e) {
-                Log.e(TAG, "Error sending pass request: " + e.getMessage());
-            }
-        } else if (lanServer != null) {
-            // Server doesn't directly pass - it handles pass requests from clients
-            Log.d(TAG, "Server received pass request for: " + targetPlayerId);
-        }
-        passPotatoWiFiDirect(targetPlayerId);
-    }
-    
-    private void leaveAllNetworks() {
-        if (firebaseMultiplayer != null) {
-            firebaseMultiplayer.leaveRoom();
-        }
-        if (lanServer != null) {
-            lanServer.stop();
-            lanServer = null;
-        }
-        if (lanClient != null) {
-            lanClient.disconnect();
-            lanClient = null;
-        }
-        if (nsdHelper != null) {
-            nsdHelper.unregisterService();
-            nsdHelper.stopDiscovery();
-        }
-        if (wifiDirectHelper != null) {
-            wifiDirectHelper.disconnect();
-        }
     }
     
     private void setupFirebaseListeners() {
@@ -590,12 +407,7 @@ public class UnifiedMultiplayerManager {
             
             @Override
             public void onRoomNotFound() {
-                if (connectionMode == ConnectionMode.AUTO_FALLBACK) {
-                    // Try Wi-Fi Direct
-                    joinWiFiDirectRoom();
-                } else {
-                    notifyError("Room not found", NetworkType.FIREBASE);
-                }
+                notifyError("Room not found", NetworkType.FIREBASE);
             }
             
             @Override
@@ -650,10 +462,6 @@ public class UnifiedMultiplayerManager {
             @Override
             public void onDiscoveryFailed(int errorCode) {
                 Log.e(TAG, "NSD discovery failed: " + errorCode);
-                if (connectionMode == ConnectionMode.AUTO_FALLBACK) {
-                    // Fallback to Firebase
-                    joinFirebaseRoom(roomCode);
-                }
             }
         });
         
@@ -677,62 +485,6 @@ public class UnifiedMultiplayerManager {
             @Override
             public void onUnregistrationFailed(int errorCode) {
                 Log.e(TAG, "NSD unregistration failed: " + errorCode);
-            }
-        });
-    }
-    
-    private void setupWiFiDirectListeners() {
-        if (wifiDirectHelper == null) return;
-        
-        wifiDirectHelper.setConnectionListener(new WiFiDirectHelper.ConnectionListener() {
-            @Override
-            public void onConnectionEstablished(WifiP2pInfo info) {
-                Log.d(TAG, "Wi-Fi Direct connection established");
-                connectionState = ConnectionState.CONNECTED;
-                activeNetworkType = NetworkType.WIFI_DIRECT;
-                
-                // Generate room code for Wi-Fi Direct
-                roomCode = "WFD_" + System.currentTimeMillis();
-                
-                if (info.isGroupOwner) {
-                    notifyRoomCreated(roomCode, NetworkType.WIFI_DIRECT);
-                } else {
-                    notifyRoomJoined(roomCode, NetworkType.WIFI_DIRECT);
-                }
-                
-                notifyConnectionStateChanged();
-            }
-            
-            @Override
-            public void onConnectionLost() {
-                Log.d(TAG, "Wi-Fi Direct connection lost");
-                connectionState = ConnectionState.DISCONNECTED;
-                notifyConnectionStateChanged();
-            }
-            
-            @Override
-            public void onConnectionFailed(String reason) {
-                Log.e(TAG, "Wi-Fi Direct connection failed: " + reason);
-                if (connectionMode == ConnectionMode.AUTO_FALLBACK) {
-                    // Fallback to Firebase
-                    if (isHost) {
-                        createFirebaseRoom(4); // Default max players
-                    } else {
-                        joinFirebaseRoom(roomCode);
-                    }
-                } else {
-                    notifyError("Wi-Fi Direct connection failed: " + reason, NetworkType.WIFI_DIRECT);
-                }
-            }
-            
-            @Override
-            public void onGroupFormed(android.net.wifi.p2p.WifiP2pGroup group) {
-                Log.d(TAG, "Wi-Fi Direct group formed");
-            }
-            
-            @Override
-            public void onGroupRemoved() {
-                Log.d(TAG, "Wi-Fi Direct group removed");
             }
         });
     }

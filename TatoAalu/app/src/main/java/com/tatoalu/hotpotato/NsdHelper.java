@@ -108,54 +108,7 @@ public class NsdHelper {
                 // Check if it's a Hot Potato game service
                 if (service.getServiceName().startsWith(SERVICE_NAME_PREFIX)) {
                     Log.d(TAG, "Found Hot Potato service, resolving: " + service.getServiceName());
-                    
-                    // Create a new resolve listener for this specific service
-                    NsdManager.ResolveListener resolveListener = new NsdManager.ResolveListener() {
-                        @Override
-                        public void onResolveFailed(NsdServiceInfo serviceInfo, int errorCode) {
-                            Log.e(TAG, "Resolve failed for " + serviceInfo.getServiceName() + ", error: " + errorCode);
-                            // Retry resolve after a delay for certain error codes
-                            if (errorCode == NsdManager.FAILURE_ALREADY_ACTIVE) {
-                                // Try again after a short delay
-                                new android.os.Handler().postDelayed(() -> {
-                                    try {
-                                        mNsdManager.resolveService(serviceInfo, this);
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Retry resolve failed", e);
-                                    }
-                                }, 1000);
-                            }
-                        }
-
-                        @Override
-                        public void onServiceResolved(NsdServiceInfo serviceInfo) {
-                            Log.d(TAG, "Service resolved: " + serviceInfo.getServiceName() + 
-                                  " at " + serviceInfo.getHost() + ":" + serviceInfo.getPort());
-                            
-                            // Add to discovered services if not already present
-                            boolean alreadyExists = false;
-                            for (NsdServiceInfo existing : mDiscoveredServices) {
-                                if (existing.getServiceName().equals(serviceInfo.getServiceName())) {
-                                    alreadyExists = true;
-                                    break;
-                                }
-                            }
-                            
-                            if (!alreadyExists) {
-                                mDiscoveredServices.add(serviceInfo);
-                            }
-                            
-                            if (discoveryListener != null) {
-                                discoveryListener.onServiceResolved(serviceInfo);
-                            }
-                        }
-                    };
-                    
-                    try {
-                        mNsdManager.resolveService(service, resolveListener);
-                    } catch (Exception e) {
-                        Log.e(TAG, "Failed to resolve service", e);
-                    }
+                    mNsdManager.resolveService(service, mResolveListener);
                 }
                 
                 if (discoveryListener != null) {
@@ -236,8 +189,18 @@ public class NsdHelper {
                     return;
                 }
                 
-                // Add to discovered services
-                mDiscoveredServices.add(serviceInfo);
+                // Add to discovered services if not already present
+                boolean alreadyExists = false;
+                for (NsdServiceInfo existing : mDiscoveredServices) {
+                    if (existing.getServiceName().equals(serviceInfo.getServiceName())) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyExists) {
+                    mDiscoveredServices.add(serviceInfo);
+                }
                 
                 if (discoveryListener != null) {
                     discoveryListener.onServiceResolved(serviceInfo);
