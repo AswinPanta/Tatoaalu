@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TatoAalu" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Material colors override -->
+        <item name="colorPrimary">@color/hot_orange</item>
+        <item name="colorSecondary">@color/deep_orange</item>
+        <item name="colorSurface">@color/charcoal</item>
+        <item name="colorOnPrimary">@color/near_black</item>
+        <!-- System bars and window background -->
+        <item name="android:statusBarColor">@color/near_black</item>
+        <item name="android:navigationBarColor">@color/near_black</item>
+        <item name="android:windowBackground">@drawable/bg_flame</item>
+    </style>
+</resources>

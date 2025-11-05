@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_flame">
+
+    <!-- Hero icon -->
+    <ImageView
+        android:id="@+id/heroIcon"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:src="@drawable/potato"
+        android:contentDescription="@string/app_name"
+        app:tint="@color/flame_cream"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="36dp"/>
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/title_main"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:textColor="@color/flame_cream"
+        app:layout_constraintTop_toBottomOf="@id/heroIcon"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="12dp"/>
+
+    <!-- Tagline -->
+    <TextView
+        android:id="@+id/tagline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/tagline_main"
+        android:textSize="14sp"
+        android:textStyle="italic"
+        android:textColor="@color/flame_cream"
+        app:layout_constraintTop_toBottomOf="@id/title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="4dp"/>
+
+    <!-- Quick Play primary action -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/startButton"
+        style="@style/Widget.Material3.Button.ElevatedButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_quick_play"
+        android:textColor="@color/on_black_muted"
+        app:icon="@android:drawable/ic_media_play"
+        app:iconPadding="8dp"
+        app:iconGravity="textStart"
+        app:layout_constraintTop_toBottomOf="@id/tagline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginTop="24dp"/>
+
+    <!-- Game Mode label and spinner -->
+    <TextView
+        android:id="@+id/gameModeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Game Mode:"
+        android:textColor="@color/flame_cream"
+        app:layout_constraintTop_toBottomOf="@id/startButton"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="18dp"/>
+
+    <Spinner
+        android:id="@+id/gameModeSpinner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/startButton"
+        app:layout_constraintStart_toEndOf="@id/gameModeLabel"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="18dp"
+        android:entries="@array/game_modes"/>
+
+    <!-- Connection Mode label and spinner -->
+    <TextView
+        android:id="@+id/connectionModeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connection:"
+        android:textColor="@color/flame_cream"
+        app:layout_constraintTop_toBottomOf="@id/gameModeSpinner"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="12dp"/>
+
+    <Spinner
+        android:id="@+id/connectionModeSpinner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/gameModeSpinner"
+        app:layout_constraintStart_toEndOf="@id/connectionModeLabel"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:entries="@array/connection_modes"/>
+
+    <!-- Players label and spinner -->
+    <TextView
+        android:id="@+id/playerCountLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/label_players"
+        android:textColor="@color/flame_cream"
+        app:layout_constraintTop_toBottomOf="@id/connectionModeSpinner"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="12dp"/>
+
+    <Spinner
+        android:id="@+id/playerCountSpinner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/connectionModeSpinner"
+        app:layout_constraintStart_toEndOf="@id/playerCountLabel"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:entries="@array/player_counts"/>
+
+    <!-- Names card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/namesCard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:cardUseCompatPadding="true"
+        app:cardElevation="6dp"
+        app:strokeColor="@color/flame_cream"
+        app:strokeWidth="1dp"
+        app:layout_constraintTop_toBottomOf="@id/playerCountSpinner"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="16dp">
+
+        <!-- Names container for local or self name for host/client -->
+        <LinearLayout
+            android:id="@+id/namesContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:animateLayoutChanges="true"
+            android:padding="12dp">
+
+            <EditText
+                android:id="@+id/name1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/hint_player_1"
+                android:textColorHint="@color/on_black_muted"
+                android:textColor="@color/flame_cream"
+                android:inputType="textPersonName"/>
+
+            <EditText
+                android:id="@+id/name2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/hint_player_2"
+                android:textColorHint="@color/on_black_muted"
+                android:textColor="@color/flame_cream"
+                android:inputType="textPersonName"/>
+
+            <EditText
+                android:id="@+id/name3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/hint_player_3"
+                android:textColorHint="@color/on_black_muted"
+                android:textColor="@color/flame_cream"
+                android:inputType="textPersonName"/>
+
+            <EditText
+                android:id="@+id/name4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/hint_player_4"
+                android:textColorHint="@color/on_black_muted"
+                android:textColor="@color/flame_cream"
+                android:inputType="textPersonName"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Multiplayer actions -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/hostButton"
+        style="@style/Widget.Material3.Button.ElevatedButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_host"
+        android:textColor="@color/on_black_muted"
+        app:icon="@android:drawable/ic_menu_share"
+        app:iconPadding="8dp"
+        app:iconGravity="textStart"
+        app:layout_constraintTop_toBottomOf="@id/namesCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="24dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/joinButton"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_join"
+        android:textColor="@color/on_black_muted"
+        app:icon="@android:drawable/ic_menu_send"
+        app:iconPadding="8dp"
+        app:iconGravity="textStart"
+        app:layout_constraintTop_toBottomOf="@id/hostButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="12dp"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

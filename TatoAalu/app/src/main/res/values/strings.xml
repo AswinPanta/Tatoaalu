@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TatoAalu</string>
+    <string name="game_over_message">Game Over! %s lost!</string>
+    <string name="default_name_1_ne">Aanya</string>
+    <string name="default_name_2_ne">Ben</string>
+    <string name="default_name_3_ne">Chloe</string>
+    <string name="default_name_4_ne">Drew</string>
+    <string name="win_count_suffix">(%d wins)</string>
+    <string name="title_main">Tato Aalu</string>
+    <string name="btn_quick_play">Quick Play (Local)</string>
+    <string name="label_players">Players:</string>
+    <string name="btn_host">Host Multiplayer</string>
+    <string name="btn_join">Join Multiplayer</string>
+
+    <!-- Tagline -->
+    <string name="tagline_main">Fast reflexes. Hot potato. Big laughs.</string>
+
+    <!-- Outcome messages -->
+    <string name="winner_message">You win!</string>
+    <string name="loser_message">Jalis ni!</string>
+
+    <string name="countdown_started">Countdown started</string>
+    <string name="timer_game_over">Game Over! %1$s burned</string>
+
+    <string name="btn_restart">Restart</string>
+    <string name="btn_home">Home</string>
+    <string name="btn_leaderboard">Leaderboard</string>
+    <string name="leaderboard_title">Leaderboard</string>
+    <string name="back">Back</string>
+    <string name="hint_player_1">Player 1 Name</string>
+    <string name="hint_player_2">Player 2 Name</string>
+    <string name="hint_player_3">Player 3 Name</string>
+    <string name="hint_player_4">Player 4 Name</string>
+</resources>

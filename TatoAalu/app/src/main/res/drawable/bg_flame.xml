@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base near-black background -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/near_black"/>
+        </shape>
+    </item>
+
+    <!-- Soft vertical gradient for warmth -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="linear"
+                android:startColor="#22000000"
+                android:centerColor="#22000000"
+                android:endColor="#44000000"
+                android:angle="270"/>
+        </shape>
+    </item>
+
+    <!-- Radial flame glow near bottom center -->
+    <item android:gravity="bottom|center_horizontal">
+        <shape android:shape="oval">
+            <size android:width="800dp" android:height="800dp"/>
+            <gradient android:type="radial"
+                android:gradientRadius="400dp"
+                android:startColor="#55FF6F00"
+                android:centerColor="#33FF8F00"
+                android:endColor="#00FF8F00"/>
+        </shape>
+    </item>
+
+    <!-- Secondary glow -->
+    <item android:gravity="bottom|center_horizontal" android:bottom="-80dp">
+        <shape android:shape="oval">
+            <size android:width="600dp" android:height="600dp"/>
+            <gradient android:type="radial"
+                android:gradientRadius="300dp"
+                android:startColor="#33FFA000"
+                android:centerColor="#22FF8F00"
+                android:endColor="#00FFA000"/>
+        </shape>
+    </item>
+</layer-list>

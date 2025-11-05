@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ततो आलु</string>
+    <string name="game_over_message">खेल सकियो! %s हार्यो!</string>
+    <string name="title_main">ततो आलु</string>
+    <string name="btn_quick_play">छिटो खेल (स्थानीय)</string>
+    <string name="label_players">खेलाडीहरू:</string>
+    <string name="btn_host">बहु-खेल होस्ट</string>
+    <string name="btn_join">बहु-खेल जडान</string>
+
+    <!-- Tagline -->
+    <string name="tagline_main">छिटो प्रतिक्रिया। ततो आलु। धेरै रमाइलो।</string>
+
+    <!-- Outcome messages -->
+    <string name="winner_message">तिमी जित्यौ!</string>
+    <string name="loser_message">जालिस नि!</string>
+
+    <string name="countdown_started">काउन्टडाउन सुरु भयो</string>
+    <string name="timer_game_over">खेल सकियो! %1$s पोलियो</string>
+
+    <string name="btn_restart">फेरि सुरु</string>
+    <string name="btn_home">होम</string>
+    <string name="btn_leaderboard">लिडरबोर्ड</string>
+    <string name="leaderboard_title">लिडरबोर्ड</string>
+    <string name="back">फिर्ता</string>
+
+    <!-- Default Nepali names (used when players == 4) -->
+    <string name="default_name_1_ne">अश्विन</string>
+    <string name="default_name_2_ne">सलिना</string>
+    <string name="default_name_3_ne">रोहित</string>
+    <string name="default_name_4_ne">अनुप</string>
+
+    <!-- Hints for name inputs -->
+    <string name="hint_player_1">खेलाडी १ को नाम</string>
+    <string name="hint_player_2">खेलाडी २ को नाम</string>
+    <string name="hint_player_3">खेलाडी ३ को नाम</string>
+    <string name="hint_player_4">खेलाडी ४ को नाम</string>
+
+    <!-- Win count suffix -->
+    <string name="win_count_suffix">(%1$d जित)</string>
+</resources>

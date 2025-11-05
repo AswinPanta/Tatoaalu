@@ -1,0 +1,53 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Chair Back -->
+    <path
+        android:fillColor="#8B4513"
+        android:pathData="M6,2 L18,2 Q19,2 19,3 L19,12 Q19,13 18,13 L6,13 Q5,13 5,12 L5,3 Q5,2 6,2 Z" />
+    
+    <!-- Chair Seat -->
+    <path
+        android:fillColor="#A0522D"
+        android:pathData="M4,11 L20,11 Q21,11 21,12 L21,14 Q21,15 20,15 L4,15 Q3,15 3,14 L3,12 Q3,11 4,11 Z" />
+    
+    <!-- Left Front Leg -->
+    <path
+        android:fillColor="#654321"
+        android:pathData="M5,15 L7,15 L7,22 L5,22 Z" />
+    
+    <!-- Right Front Leg -->
+    <path
+        android:fillColor="#654321"
+        android:pathData="M17,15 L19,15 L19,22 L17,22 Z" />
+    
+    <!-- Left Back Leg -->
+    <path
+        android:fillColor="#654321"
+        android:pathData="M5,13 L7,13 L7,22 L5,22 Z" />
+    
+    <!-- Right Back Leg -->
+    <path
+        android:fillColor="#654321"
+        android:pathData="M17,13 L19,13 L19,22 L17,22 Z" />
+    
+    <!-- Chair Back Details -->
+    <path
+        android:fillColor="#D2691E"
+        android:pathData="M7,4 L17,4 L17,5 L7,5 Z" />
+    <path
+        android:fillColor="#D2691E"
+        android:pathData="M7,7 L17,7 L17,8 L7,8 Z" />
+    <path
+        android:fillColor="#D2691E"
+        android:pathData="M7,10 L17,10 L17,11 L7,11 Z" />
+    
+    <!-- Seat Cushion Effect -->
+    <path
+        android:fillColor="#CD853F"
+        android:pathData="M5,12 L19,12 Q19.5,12 19.5,12.5 L19.5,13.5 Q19.5,14 19,14 L5,14 Q4.5,14 4.5,13.5 L4.5,12.5 Q4.5,12 5,12 Z" />
+    
+</vector>

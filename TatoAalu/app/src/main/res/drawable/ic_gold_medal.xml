@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    
+    <!-- Medal circle -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M16,16m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0"/>
+    
+    <!-- Inner circle -->
+    <path
+        android:fillColor="#FFA000"
+        android:pathData="M16,16m-8,0a8,8 0,1 1,16 0a8,8 0,1 1,-16 0"/>
+    
+    <!-- Number 1 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M14,12h2v8h-2v-6h-1v-1.5h1V12z"/>
+    
+    <!-- Ribbon left -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M8,4L12,8L10,12L6,8z"/>
+    
+    <!-- Ribbon right -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M24,4L20,8L22,12L26,8z"/>
+</vector>
