@@ -63,49 +63,20 @@
         android:layout_marginHorizontal="24dp"
         android:layout_marginTop="24dp"/>
 
-    <!-- Game Mode label and spinner -->
+    <!-- Game Info Text -->
     <TextView
-        android:id="@+id/gameModeLabel"
+        android:id="@+id/gameInfoText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Game Mode:"
+        android:text="🔥 Hot Potato - The Ultimate Party Game!"
         android:textColor="@color/flame_cream"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textAlignment="center"
         app:layout_constraintTop_toBottomOf="@id/startButton"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="18dp"/>
-
-    <Spinner
-        android:id="@+id/gameModeSpinner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/startButton"
-        app:layout_constraintStart_toEndOf="@id/gameModeLabel"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="18dp"
-        android:entries="@array/game_modes"/>
-
-    <!-- Connection Mode label and spinner -->
-    <TextView
-        android:id="@+id/connectionModeLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Connection:"
-        android:textColor="@color/flame_cream"
-        app:layout_constraintTop_toBottomOf="@id/gameModeSpinner"
-        app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="12dp"/>
-
-    <Spinner
-        android:id="@+id/connectionModeSpinner"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/gameModeSpinner"
-        app:layout_constraintStart_toEndOf="@id/connectionModeLabel"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="12dp"
-        android:entries="@array/connection_modes"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="24dp"/>
 
     <!-- Players label and spinner -->
     <TextView
@@ -114,19 +85,19 @@
         android:layout_height="wrap_content"
         android:text="@string/label_players"
         android:textColor="@color/flame_cream"
-        app:layout_constraintTop_toBottomOf="@id/connectionModeSpinner"
+        app:layout_constraintTop_toBottomOf="@id/gameInfoText"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginStart="24dp"
-        android:layout_marginTop="12dp"/>
+        android:layout_marginTop="18dp"/>
 
     <Spinner
         android:id="@+id/playerCountSpinner"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/connectionModeSpinner"
+        app:layout_constraintTop_toBottomOf="@id/gameInfoText"
         app:layout_constraintStart_toEndOf="@id/playerCountLabel"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="18dp"
         android:entries="@array/player_counts"/>
 
     <!-- Names card -->
@@ -194,13 +165,13 @@
 
     <!-- Multiplayer actions -->
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/hostButton"
+        android:id="@+id/lanBrowserButton"
         style="@style/Widget.Material3.Button.ElevatedButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="@string/btn_host"
+        android:text="🌐 Browse LAN Games"
         android:textColor="@color/on_black_muted"
-        app:icon="@android:drawable/ic_menu_share"
+        app:icon="@android:drawable/ic_menu_search"
         app:iconPadding="8dp"
         app:iconGravity="textStart"
         app:layout_constraintTop_toBottomOf="@id/namesCard"
@@ -209,22 +180,5 @@
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
         android:layout_marginTop="24dp"/>
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/joinButton"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="@string/btn_join"
-        android:textColor="@color/on_black_muted"
-        app:icon="@android:drawable/ic_menu_send"
-        app:iconPadding="8dp"
-        app:iconGravity="textStart"
-        app:layout_constraintTop_toBottomOf="@id/hostButton"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginTop="12dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

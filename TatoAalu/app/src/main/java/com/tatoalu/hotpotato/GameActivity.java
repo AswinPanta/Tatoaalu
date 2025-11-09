@@ -1,24 +1,17 @@
 package com.tatoalu.hotpotato;
 
-import android.content.Context;
 import android.content.Intent;
-import android.graphics.Typeface;
-import android.net.wifi.WifiManager;
-import android.os.Bundle;
-import android.view.View;
-import android.app.AlertDialog;
-import android.os.Handler;
-import android.os.SystemClock;
-import android.widget.TextView;
-import android.widget.Button;
-import android.media.AudioManager;
 import android.media.ToneGenerator;
-import android.view.animation.DecelerateInterpolator;
-import android.view.animation.OvershootInterpolator;
-import android.animation.ObjectAnimator;
-import android.animation.AnimatorSet;
+import android.media.AudioManager;
+import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
-import java.util.Random;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.View.OnTouchListener;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,640 +19,1073 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.util.ArrayList;
 import java.util.List;
 
-// खेल गतिविधि - मुख्य खेल स्क्रिन (Game Activity - Main Game Screen)
+/**
+ * GameActivity - Clean Hot Potato Game Implementation
+ * Focused on simple tap-to-pass functionality
+ */
 public class GameActivity extends AppCompatActivity {
     private static final String TAG = "GameActivity";
-    private GameView gameView;
+
+    // UI Components
     private TextView timerText;
-    private TextView lobbyCountdownTextView;
     private TextView playerStatusTextView;
     private Button startGameButton;
-    private Handler uiHandler = new Handler();
-    private LeaderboardManager leaderboardManager;
+    private TextView tapInstructionText;
+    private ImageView flyingPotato;
 
-    // एकीकृत नेटवर्किङ (Unified Networking)
-    private UnifiedMultiplayerManager multiplayerManager;
-    private WifiManager.MulticastLock multicastLock;
-
-    // होस्ट टिक (Host tick)
-    private final Handler tickHandler = new Handler();
-    private Runnable tickRunnable;
-    private long hostStartTime;
-    private long hostBurnMs;
-    private final Random random = new Random();
-
-    // खेल अवस्था (Game state)
+    // Game State
     private String mode = "local";
     private int players = 4;
-    private int currentHolder = 0;
     private final List<String> playerNames = new ArrayList<>();
-    private String roomCode;
-    private UnifiedMultiplayerManager.ConnectionMode connectionMode = UnifiedMultiplayerManager.ConnectionMode.AUTO_FALLBACK;
 
-    private static final int PORT = 54567;
-    private String selfName = "खेलाडी"; // Player
+    // Core Game State
+    private boolean gameInProgress = false;
+    private boolean potatoPassing = false;
+    private List<Player> activePlayers = new ArrayList<>();
+    private Player currentPlayerWithPotato = null;
+    private int currentHolderIndex = 0;
+
+    // Audio
+    private ToneGenerator toneGenerator;
+
+    // Touch handling
+    private View[] playerTouchZones = new View[4];
+    private long lastTouchTime = 0;
+    private static final long TOUCH_COOLDOWN = 300;
+
+    // UI Handler
+    private Handler uiHandler = new Handler();
+
+    // Multiplayer components
+    private LanMultiplayerManager lanMultiplayerManager;
+    private String roomCode;
+
+    // Network operation executor
+    private java.util.concurrent.ExecutorService networkExecutor =
+        java.util.concurrent.Executors.newCachedThreadPool();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
 
-        // दृश्य तत्वहरू सुरु गर्नुहोस् (Initialize views)
-        gameView = findViewById(R.id.gameView);
+        initializeViews();
+        initializeAudio();
+        processIntent();
+        setupPlayerTouchZones();
+
+        if (mode.equals("local")) {
+            setupLocal();
+        } else if (mode.equals("multiplayer")) {
+            setupMultiplayer();
+        }
+    }
+
+    private void initializeViews() {
         timerText = findViewById(R.id.timerText);
-        lobbyCountdownTextView = findViewById(R.id.lobbyCountdownText);
         playerStatusTextView = findViewById(R.id.playerStatusText);
         startGameButton = findViewById(R.id.startGameButton);
+        flyingPotato = findViewById(R.id.flyingPotato);
+        tapInstructionText = findViewById(R.id.tapInstructionText);
+    }
 
-        // लिडरबोर्ड प्रबन्धक सुरु गर्नुहोस् (Initialize leaderboard manager)
-        leaderboardManager = new LeaderboardManager();
+    private void initializeAudio() {
+        try {
+            toneGenerator = new ToneGenerator(AudioManager.STREAM_MUSIC, 100);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Failed to initialize ToneGenerator", e);
+        }
+    }
 
-        // इन्टेन्ट डेटा प्राप्त गर्नुहोस् (Get intent data)
+    private void processIntent() {
         Intent intent = getIntent();
         if (intent != null) {
             mode = intent.getStringExtra("gameMode");
             if (mode == null) mode = "local";
-            
+
             ArrayList<String> names = intent.getStringArrayListExtra("playerNames");
             if (names != null) {
                 playerNames.addAll(names);
                 players = playerNames.size();
-            }
-            
-            boolean useUnified = intent.getBooleanExtra("useUnifiedMultiplayerManager", false);
-             if (useUnified) {
-                 multiplayerManager = new UnifiedMultiplayerManager(this);
-                 if (multiplayerManager != null) {
-                     setupMultiplayerListeners();
-                 }
-             }
-        }
 
-        // खेल मोडको आधारमा सेटअप गर्नुहोस् (Setup based on game mode)
-        if (mode.equals("local")) {
-            setupLocal();
-        } else if (mode.equals("multiplayer")) {
-            if (multiplayerManager != null && multiplayerManager.isHost()) {
-                setupHost();
-            } else {
-                setupClient();
+                // Initialize Player objects from names
+                activePlayers.clear();
+                for (int i = 0; i < names.size(); i++) {
+                    Player player = new Player(names.get(i));
+                    player.layoutPosition = i;
+                    activePlayers.add(player);
+                }
+            }
+
+            // Initialize multiplayer manager if needed
+            boolean useEnhancedLan = intent.getBooleanExtra("useEnhancedLan", false);
+            boolean isHost = intent.getBooleanExtra("isHost", false);
+            String playerName = intent.getStringExtra("playerName");
+            roomCode = intent.getStringExtra("roomCode");
+            boolean hasTransferredConnection = intent.getBooleanExtra("hasTransferredConnection", false);
+
+            if (useEnhancedLan && mode.equals("multiplayer")) {
+                // Create new multiplayer manager
+                lanMultiplayerManager = new LanMultiplayerManager(this);
+
+                // Set player name BEFORE setting up listeners
+                if (playerName != null && !playerName.trim().isEmpty()) {
+                    lanMultiplayerManager.setLocalPlayerName(playerName.trim());
+                    Log.d(TAG, "Set local player name: " + playerName.trim());
+                } else {
+                    Log.e(TAG, "Player name is null or empty!");
+                }
+
+                setupMultiplayerListeners();
+
+                // Store host/client info
+                Log.d(TAG, "Multiplayer setup - isHost: " + isHost + ", playerName: " + playerName + ", roomCode: " + roomCode + ", transferred: " + hasTransferredConnection);
             }
         }
     }
 
-    // मल्टिप्लेयर श्रोताहरू सेटअप गर्नुहोस् (Setup multiplayer listeners)
+    private void setupLocal() {
+        // Setup start button for local play
+        startGameButton.setVisibility(View.VISIBLE);
+        startGameButton.setText("Start Hot Potato");
+        startGameButton.setEnabled(true);
+        startGameButton.setOnClickListener(v -> startHotPotatoGame());
+
+        // Show player status
+        timerText.setText("Ready to play Hot Potato!");
+        timerText.setVisibility(View.VISIBLE);
+
+        String status = "Players: " + String.join(", ", playerNames);
+        if (playerStatusTextView != null) {
+            playerStatusTextView.setText(status);
+            playerStatusTextView.setVisibility(View.VISIBLE);
+        }
+
+        setupPlayerPositions();
+    }
+
+    private void setupMultiplayer() {
+        Intent intent = getIntent();
+        boolean isHost = intent.getBooleanExtra("isHost", false);
+        String playerName = intent.getStringExtra("playerName");
+        String roomCode = intent.getStringExtra("roomCode");
+
+        Log.d(TAG, "🔧 Setting up multiplayer - isHost: " + isHost + ", playerName: " + playerName + ", roomCode: " + roomCode);
+
+        // Validate required parameters
+        if (playerName == null || playerName.trim().isEmpty()) {
+            Log.e(TAG, "❌ Player name is required for multiplayer!");
+            if (playerStatusTextView != null) {
+                playerStatusTextView.setText("❌ Error: Player name required");
+            }
+            return;
+        }
+
+        // Debug current state
+        debugMultiplayerState();
+
+        if (isHost) {
+            setupHost(playerName);
+        } else {
+            setupClient(playerName);
+        }
+    }
+
+    private void setupHost(String hostPlayerName) {
+        Log.d(TAG, "🏠 SETTING UP HOST: " + hostPlayerName);
+
+        // Clear and setup host player
+        activePlayers.clear();
+        playerNames.clear();
+
+        if (hostPlayerName != null && !hostPlayerName.trim().isEmpty()) {
+            Player hostPlayer = new Player(hostPlayerName.trim());
+            hostPlayer.layoutPosition = 0;
+            activePlayers.add(hostPlayer);
+            playerNames.add(hostPlayerName.trim());
+        } else {
+            Player hostPlayer = new Player("Host");
+            hostPlayer.layoutPosition = 0;
+            activePlayers.add(hostPlayer);
+            playerNames.add("Host");
+        }
+
+        // Show HOST start button
+        startGameButton.setVisibility(View.VISIBLE);
+        startGameButton.setText("🚀 START GAME (HOST)");
+        startGameButton.setEnabled(true);
+        startGameButton.setOnClickListener(v -> {
+            // Debug before starting
+            debugMultiplayerState();
+            startMultiplayerGame();
+        });
+
+        // Show host status
+        timerText.setText("HOST - Waiting for players to join...");
+        timerText.setVisibility(View.VISIBLE);
+
+        String status = "HOST: " + activePlayers.get(0).name + " | Room: " + (roomCode != null ? roomCode : "Unknown");
+        if (playerStatusTextView != null) {
+            playerStatusTextView.setText(status);
+            playerStatusTextView.setVisibility(View.VISIBLE);
+
+            // Make status clickable to retry connection
+            playerStatusTextView.setOnClickListener(v -> {
+                Log.d(TAG, "🔄 Retrying host setup...");
+                debugMultiplayerState();
+                if (lanMultiplayerManager != null && !activePlayers.isEmpty()) {
+                    lanMultiplayerManager.setLocalPlayerName(activePlayers.get(0).name);
+                    runNetworkOperation(() -> {
+                        lanMultiplayerManager.createRoom(roomCode != null ? roomCode : "AUTO");
+                    });
+                }
+            });
+        }
+
+        setupPlayerPositions();
+
+        // Create room if we have LAN manager
+        if (lanMultiplayerManager != null) {
+            // Ensure player name is set before creating room
+            if (activePlayers.size() > 0) {
+                String hostName = activePlayers.get(0).name;
+                lanMultiplayerManager.setLocalPlayerName(hostName);
+                Log.d(TAG, "🔧 Setting host player name before creating room: " + hostName);
+
+                // Add delay to ensure name is set, then create room on background thread
+                uiHandler.postDelayed(() -> {
+                    Log.d(TAG, "🏠 Creating room with code: " + (roomCode != null ? roomCode : "AUTO"));
+                    runNetworkOperation(() -> {
+                        lanMultiplayerManager.createRoom(roomCode != null ? roomCode : "AUTO");
+                        Log.d(TAG, "✅ Room creation initiated");
+                    });
+                }, 100);
+
+                // Check for existing players after setup
+                uiHandler.postDelayed(() -> {
+                    checkForExistingPlayers();
+                }, 500);
+            } else {
+                Log.e(TAG, "❌ No active players to create room");
+                if (playerStatusTextView != null) {
+                    playerStatusTextView.setText("❌ Error: No players found");
+                }
+            }
+        } else {
+            Log.e(TAG, "❌ LanMultiplayerManager is null!");
+            if (playerStatusTextView != null) {
+                playerStatusTextView.setText("❌ Error: Network manager not initialized");
+            }
+        }
+    }
+
+    private void setupClient(String clientPlayerName) {
+        Log.d(TAG, "📱 SETTING UP CLIENT: " + clientPlayerName);
+
+        // Clear and setup client player
+        activePlayers.clear();
+        playerNames.clear();
+
+        if (clientPlayerName != null && !clientPlayerName.trim().isEmpty()) {
+            Player clientPlayer = new Player(clientPlayerName.trim());
+            clientPlayer.layoutPosition = 0;
+            activePlayers.add(clientPlayer);
+            playerNames.add(clientPlayerName.trim());
+        } else {
+            Player clientPlayer = new Player("Client");
+            clientPlayer.layoutPosition = 0;
+            activePlayers.add(clientPlayer);
+            playerNames.add("Client");
+        }
+
+        // HIDE start button for clients
+        startGameButton.setVisibility(View.GONE);
+
+        // Show client status
+        timerText.setText("CLIENT - Waiting for host to start...");
+        timerText.setVisibility(View.VISIBLE);
+
+        String status = "CLIENT: " + activePlayers.get(0).name + " | Room: " + (roomCode != null ? roomCode : "Unknown");
+        if (playerStatusTextView != null) {
+            playerStatusTextView.setText(status);
+            playerStatusTextView.setVisibility(View.VISIBLE);
+        }
+
+        setupPlayerPositions();
+
+        // Join room if we have LAN manager
+        if (lanMultiplayerManager != null && roomCode != null) {
+            String clientName = activePlayers.get(0).name;
+            lanMultiplayerManager.setLocalPlayerName(clientName);
+            Log.d(TAG, "🔧 Setting client player name: " + clientName);
+
+            // Check if we already joined via RoomBrowserActivity
+            if (lanMultiplayerManager.isConnectedToRoom()) {
+                Log.d(TAG, "📱 Already connected to room: " + roomCode);
+            } else {
+                Log.d(TAG, "📱 Ready to join room: " + roomCode);
+            }
+        }
+    }
+
+    private void startMultiplayerGame() {
+        Log.d(TAG, "🚀 HOST STARTING MULTIPLAYER GAME");
+        Log.d(TAG, "Current players: " + activePlayers.toString());
+
+        if (activePlayers.isEmpty()) {
+            timerText.setText("❌ No players to start!");
+            return;
+        }
+
+        // Broadcast player list to all clients on background thread
+        if (lanMultiplayerManager != null) {
+            StringBuilder namesList = new StringBuilder();
+            for (int i = 0; i < activePlayers.size(); i++) {
+                if (i > 0) namesList.append(",");
+                namesList.append(activePlayers.get(i).name);
+            }
+            String playerListMessage = namesList.toString();
+            Log.d(TAG, "📡 Broadcasting player list: " + playerListMessage);
+
+            // Move network operation to background thread
+            runNetworkOperation(() -> {
+                try {
+                    lanMultiplayerManager.broadcastGameData("PLAYER_NAMES:" + playerListMessage);
+                    Log.d(TAG, "✅ Successfully broadcast player names");
+
+                    // Start game after short delay on UI thread
+                    uiHandler.postDelayed(() -> {
+                        startHotPotatoGame();
+                        Log.d(TAG, "📡 Broadcasting START_GAME to clients");
+
+                        // Another background thread for START_GAME broadcast
+                        runNetworkOperation(() -> {
+                            try {
+                                lanMultiplayerManager.broadcastGameData("START_GAME");
+                                Log.d(TAG, "✅ Successfully broadcast START_GAME");
+                            } catch (Exception e) {
+                                Log.e(TAG, "❌ Failed to broadcast START_GAME: " + e.getMessage());
+                            }
+                        });
+                    }, 300);
+                } catch (Exception e) {
+                    Log.e(TAG, "❌ Failed to broadcast player names: " + e.getMessage());
+                    uiHandler.post(() -> {
+                        if (playerStatusTextView != null) {
+                            playerStatusTextView.setText("❌ Failed to start multiplayer: " + e.getMessage());
+                        }
+                    });
+                }
+            });
+        } else {
+            startHotPotatoGame();
+        }
+
+        startGameButton.setVisibility(View.GONE);
+    }
+
     private void setupMultiplayerListeners() {
-        multiplayerManager.setMultiplayerListener(new UnifiedMultiplayerManager.UnifiedMultiplayerListener() {
-            @Override
-            public void onConnectionStateChanged(UnifiedMultiplayerManager.ConnectionState state, 
-                                               UnifiedMultiplayerManager.NetworkType networkType) {
-                uiHandler.post(() -> {
-                    Log.d(TAG, "Connection state changed: " + state + " on " + networkType);
-                    updateConnectionStatus(state, networkType);
-                });
-            }
+        if (lanMultiplayerManager == null) return;
 
+        lanMultiplayerManager.setListener(new LanMultiplayerManager.LanMultiplayerListener() {
             @Override
-            public void onRoomCreated(String roomCode, UnifiedMultiplayerManager.NetworkType networkType) {
+            public void onRoomCreated(String roomCode) {
                 uiHandler.post(() -> {
                     GameActivity.this.roomCode = roomCode;
-                    Log.d(TAG, "Room created: " + roomCode + " on " + networkType);
-                    playerStatusTextView.setText("Room Code: " + roomCode + "\nWaiting for players...");
+                    Log.d(TAG, "🏠 Room created successfully: " + roomCode);
+                    if (playerStatusTextView != null) {
+                        StringBuilder playerList = new StringBuilder();
+                        for (int i = 0; i < activePlayers.size(); i++) {
+                            if (i > 0) playerList.append(", ");
+                            playerList.append(activePlayers.get(i).name);
+                        }
+                        String status = "HOST: " + playerList.toString() + " | Room: " + roomCode + " | Ready!";
+                        playerStatusTextView.setText(status);
+                    }
+
+                    // Update timer text for host
+                    if (timerText != null) {
+                        timerText.setText("HOST - " + activePlayers.size() + " players. Waiting for more to join...");
+                    }
                 });
             }
 
             @Override
-            public void onRoomJoined(String roomCode, UnifiedMultiplayerManager.NetworkType networkType) {
+            public void onRoomJoined(String roomCode, String hostName) {
                 uiHandler.post(() -> {
                     GameActivity.this.roomCode = roomCode;
-                    Log.d(TAG, "Joined room: " + roomCode + " on " + networkType);
-                    playerStatusTextView.setText("Joined room: " + roomCode);
+                    Log.d(TAG, "📱 Joined room: " + roomCode + " hosted by: " + hostName);
                 });
             }
 
             @Override
-            public void onPlayerJoined(String playerId, String playerName, UnifiedMultiplayerManager.NetworkType networkType) {
+            public void onPlayerJoined(String playerId, String playerName) {
                 uiHandler.post(() -> {
-                    if (!playerNames.contains(playerName)) {
+                    Log.d(TAG, "🎮 Player joined: " + playerName);
+
+                    // Add player if not already exists
+                    boolean playerExists = false;
+                    for (Player player : activePlayers) {
+                        if (player.name.equals(playerName)) {
+                            playerExists = true;
+                            break;
+                        }
+                    }
+
+                    if (!playerExists) {
+                        Player newPlayer = new Player(playerName);
+                        newPlayer.layoutPosition = activePlayers.size();
+                        activePlayers.add(newPlayer);
                         playerNames.add(playerName);
-                        gameView.setPlayerNames(playerNames);
-                        updatePlayerStatus();
-                        
-                        // Enable start button if we have enough players and we're the host
-                        if (mode.equals("host") && playerNames.size() >= 2) {
-                            startGameButton.setEnabled(true);
+
+                        setupPlayerPositions();
+
+                        updateHostUI();
+                        Log.d(TAG, "✅ Total players: " + activePlayers.size());
+                    }
+
+            @Override
+            public void onPlayerLeft(String playerId, String playerName) {
+                uiHandler.post(() -> {
+                    Log.d(TAG, "👋 Player left: " + playerName);
+                    activePlayers.removeIf(player -> player.name.equals(playerName));
+                    playerNames.remove(playerName);
+                    setupPlayerPositions();
+                });
+            }
+
+            @Override
+            public void onGameStarted() {
+                uiHandler.post(() -> {
+                    Log.d(TAG, "🎮 Game started by host");
+                    startHotPotatoGame();
+                });
+            }
+
+            @Override
+            public void onGameDataReceived(String data) {
+                handleMultiplayerData(data);
+            }
+
+            @Override
+            public void onConnectionError(String error) {
+                uiHandler.post(() -> {
+                    Log.e(TAG, "❌ Connection error: " + error);
+                    debugMultiplayerState();
+
+                    if (playerStatusTextView != null) {
+                        playerStatusTextView.setText("❌ Error: " + error + " | Tap to retry");
+                    }
+
+                    // Try to fix common issues
+                    if ((error.contains("player name") || error.contains("EADDRINUSE") || error.contains("bind failed"))
+                        && !activePlayers.isEmpty()) {
+                        Log.d(TAG, "🔧 Attempting to fix connection issue...");
+                        if (lanMultiplayerManager != null) {
+                            String playerName = activePlayers.get(0).name;
+                            Log.d(TAG, "🔧 Setting player name to: " + playerName);
+                            lanMultiplayerManager.setLocalPlayerName(playerName);
+
+                            // Cleanup and retry with delay
+                            uiHandler.postDelayed(() -> {
+                                Log.d(TAG, "🔄 Retrying connection...");
+                                // Attempt cleanup first
+                                try {
+                                    lanMultiplayerManager.cleanup();
+                                } catch (Exception e) {
+                                    Log.w(TAG, "Cleanup error: " + e.getMessage());
+                                }
+
+                                // Retry on background thread
+                                uiHandler.postDelayed(() -> {
+                                    runNetworkOperation(() -> {
+                                        lanMultiplayerManager.createRoom(roomCode != null ? roomCode : "AUTO");
+                                    });
+                                }, 500);
+                            }, 1000);
                         }
                     }
                 });
             }
 
             @Override
-            public void onPlayerLeft(String playerId, String playerName, UnifiedMultiplayerManager.NetworkType networkType) {
+            public void onDisconnected() {
                 uiHandler.post(() -> {
-                    playerNames.remove(playerName);
-                    gameView.setPlayerNames(playerNames);
-                    updatePlayerStatus();
-                    if (playerNames.isEmpty()) {
-                        new AlertDialog.Builder(GameActivity.this)
-                            .setMessage("All players have left the game.")
-                            .setPositiveButton("OK", (dialog, which) -> finish())
-                            .show();
+                    Log.d(TAG, "📡 Disconnected from game");
+                    if (playerStatusTextView != null) {
+                        playerStatusTextView.setText("❌ Disconnected from game");
                     }
-                });
-            }
 
-            @Override
-            public void onHostChanged(String newHostId, UnifiedMultiplayerManager.NetworkType networkType) {
-                uiHandler.post(() -> {
-                    Log.d(TAG, "Host changed to: " + newHostId);
-                    // Handle host migration if needed
-                });
-            }
-
-            @Override
-            public void onNetworkError(String error, UnifiedMultiplayerManager.NetworkType networkType) {
-                uiHandler.post(() -> {
-                    Log.e(TAG, "Network error on " + networkType + ": " + error);
-                    showNetworkError(error, networkType);
-                });
-            }
-
-            @Override
-            public void onFallbackActivated(UnifiedMultiplayerManager.NetworkType fromType, 
-                                          UnifiedMultiplayerManager.NetworkType toType) {
-                uiHandler.post(() -> {
-                    Log.d(TAG, "Network fallback: " + fromType + " -> " + toType);
-                    playerStatusTextView.setText("Switched to " + toType + " network");
-                });
-            }
-        });
-
-        multiplayerManager.setGameEventListener(new UnifiedMultiplayerManager.GameEventListener() {
-            @Override
-            public void onGameStateChanged(FirebaseRealtimeMultiplayer.GameState state, java.util.Map<String, Object> data) {
-                uiHandler.post(() -> {
-                    handleGameStateChange(state, data);
-                });
-            }
-
-            @Override
-            public void onGameTick(long remainingMs) {
-                uiHandler.post(() -> {
-                    timerText.setText("🔥 " + remainingMs + " ms");
-                });
-            }
-
-            @Override
-            public void onPotatoPassed(String fromPlayer, String toPlayer) {
-                uiHandler.post(() -> {
-                    // Find player indices and update game view
-                    int fromIndex = playerNames.indexOf(fromPlayer);
-                    int toIndex = playerNames.indexOf(toPlayer);
-                    if (toIndex >= 0) {
-                        currentHolder = toIndex;
-                        gameView.setCurrentHolder(currentHolder);
+                    // Attempt reconnection for host
+                    Intent intent = getIntent();
+                    boolean isHost = intent.getBooleanExtra("isHost", false);
+                    if (isHost && lanMultiplayerManager != null && !activePlayers.isEmpty()) {
+                        Log.d(TAG, "🔄 Attempting to recreate room...");
+                        uiHandler.postDelayed(() -> {
+                            lanMultiplayerManager.setLocalPlayerName(activePlayers.get(0).name);
+                            runNetworkOperation(() -> {
+                                lanMultiplayerManager.createRoom("AUTO");
+                            });
+                        }, 2000);
                     }
-                });
-            }
-
-            @Override
-            public void onGameOver(String loserPlayerId, String loserName) {
-                uiHandler.post(() -> {
-                    timerText.setText(getString(R.string.timer_game_over, loserName));
-                    showOutcomeOverlay(loserName);
-                    findViewById(R.id.endButtonsContainer).setVisibility(View.VISIBLE);
-                    setupEndButtons();
-                    updateWins(loserName);
                 });
             }
         });
     }
 
-    // जडान स्थिति अपडेट गर्नुहोस् (Update connection status)
-    private void updateConnectionStatus(UnifiedMultiplayerManager.ConnectionState state, 
-                                     UnifiedMultiplayerManager.NetworkType networkType) {
-        String statusText = "";
-        switch (state) {
-            case CONNECTING:
-                statusText = "Connecting via " + networkType + "...";
-                break;
-            case CONNECTED:
-                statusText = "Connected via " + networkType;
-                break;
-            case DISCONNECTED:
-                statusText = "Disconnected";
-                break;
-            case ERROR:
-                statusText = "Connection error";
-                break;
+    private void debugMultiplayerState() {
+        Log.d(TAG, "🔍 MULTIPLAYER DEBUG STATE:");
+        Log.d(TAG, "  lanMultiplayerManager: " + (lanMultiplayerManager != null ? "initialized" : "NULL"));
+        Log.d(TAG, "  mode: " + mode);
+        Log.d(TAG, "  roomCode: " + roomCode);
+        Log.d(TAG, "  activePlayers.size(): " + activePlayers.size());
+        if (!activePlayers.isEmpty()) {
+            Log.d(TAG, "  first player: " + activePlayers.get(0).name);
         }
-        
-        if (playerStatusTextView != null) {
-            playerStatusTextView.setText(statusText);
+        Intent intent = getIntent();
+        if (intent != null) {
+            Log.d(TAG, "  intent.isHost: " + intent.getBooleanExtra("isHost", false));
+            Log.d(TAG, "  intent.playerName: " + intent.getStringExtra("playerName"));
+            Log.d(TAG, "  intent.useEnhancedLan: " + intent.getBooleanExtra("useEnhancedLan", false));
         }
     }
 
-    // खेलाडी स्थिति अपडेट गर्नुहोस् (Update player status)
-    private void updatePlayerStatus() {
-        if (playerStatusTextView != null) {
-            String status = "Players (" + playerNames.size() + "/" + players + "): " + 
-                           String.join(", ", playerNames);
-            if (roomCode != null) {
-                status = "Room: " + roomCode + "\n" + status;
-            }
-            playerStatusTextView.setText(status);
-        }
-    }
+    private void handleMultiplayerData(String data) {
+        String[] parts = data.split(":");
+        if (parts.length < 1) return;
 
-    // नेटवर्क त्रुटि देखाउनुहोस् (Show network error)
-    private void showNetworkError(String error, UnifiedMultiplayerManager.NetworkType networkType) {
-        new AlertDialog.Builder(this)
-            .setTitle("Network Error")
-            .setMessage("Error on " + networkType + ": " + error)
-            .setPositiveButton("OK", null)
-            .show();
-    }
+        String action = parts[0];
+        String payload = parts.length > 1 ? parts[1] : "";
 
-    // खेल अवस्था परिवर्तन ह्यान्डल गर्नुहोस् (Handle game state change)
-    private void handleGameStateChange(FirebaseRealtimeMultiplayer.GameState state, 
-                                     java.util.Map<String, Object> data) {
-        switch (state) {
-            case WAITING_FOR_PLAYERS:
-                // Game is waiting for players
-                break;
-            case COUNTDOWN:
-                // Game is starting
-                if (lobbyCountdownTextView != null) {
-                    lobbyCountdownTextView.setVisibility(View.GONE);
-                }
-                if (startGameButton != null) {
+        switch (action) {
+            case "START_GAME":
+                uiHandler.post(() -> {
+                    Log.d(TAG, "🚀 START_GAME received from host");
                     startGameButton.setVisibility(View.GONE);
-                }
-                timerText.setVisibility(View.VISIBLE);
+                    startHotPotatoGame();
+                });
                 break;
-            case PLAYING:
-                // Game is in progress
-                if (data != null && data.containsKey("currentHolder")) {
-                    Object holderObj = data.get("currentHolder");
-                    if (holderObj instanceof Number) {
-                        currentHolder = ((Number) holderObj).intValue();
-                        gameView.setCurrentHolder(currentHolder);
-                    }
-                }
-                break;
-            case GAME_OVER:
-                // Game has ended
-                break;
-        }
-    }
 
-    private void setupLocal() {
-        // Show one-time visual cue when countdown begins
-        TextView cue = findViewById(R.id.countdownCue);
-        if (cue != null) {
-            cue.setAlpha(1f);
-            cue.setVisibility(TextView.VISIBLE);
-            cue.animate().alpha(0f).setDuration(1200).withEndAction(() -> cue.setVisibility(TextView.GONE)).start();
-        }
-        // Play a short audio beep as an additional cue
-        try {
-            ToneGenerator toneGen = new ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100);
-            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 300);
-        } catch (Exception ignored) {}
-
-        gameView.init(players, new GameView.GameListener() {
-            @Override
-            public void onTick(long millisRemaining) {
-                uiHandler.post(() -> timerText.setText("🔥 " + millisRemaining + " ms"));
-            }
-            @Override
-            public void onGameOver(String loserName) {
+            case "PLAYER_NAMES":
+                String[] namesArray = payload.split(",");
                 uiHandler.post(() -> {
-                    timerText.setText(getString(R.string.timer_game_over, loserName));
-                    // Outcome overlay
-                    showOutcomeOverlay(loserName);
-                    // Show end buttons
-                    findViewById(R.id.endButtonsContainer).setVisibility(TextView.VISIBLE);
-                    setupEndButtons();
-                    // Update wins for all non-losers
-                    updateWins(loserName);
+                    Log.d(TAG, "📋 Received player names: " + payload);
 
-                    // Submit score to leaderboard
-                    leaderboardManager.submitScore("local_player", loserName, gameView.getScore(), "local_quick_game");
+                    // Keep current player but update full list
+                    String currentPlayerName = activePlayers.isEmpty() ? null : activePlayers.get(0).name;
+                    activePlayers.clear();
+                    playerNames.clear();
+
+                    for (int i = 0; i < namesArray.length; i++) {
+                        String name = namesArray[i].trim();
+                        if (!name.isEmpty()) {
+                            Player player = new Player(name);
+                            player.layoutPosition = i;
+                            activePlayers.add(player);
+                            playerNames.add(name);
+                        }
+                    }
+
+                    setupPlayerPositions();
+
+                    // Update client UI
+                    if (playerStatusTextView != null) {
+                        StringBuilder playerList = new StringBuilder();
+                        for (int i = 0; i < activePlayers.size(); i++) {
+                            if (i > 0) playerList.append(", ");
+                            playerList.append(activePlayers.get(i).name);
+                        }
+                        String status = "CLIENT: " + (currentPlayerName != null ? currentPlayerName : "Unknown") +
+                                       " | Players: " + playerList.toString();
+                        playerStatusTextView.setText(status);
+                    }
+                });
+                break;
+
+            case "PASS":
+                int newHolderIndex = Integer.parseInt(payload);
+                uiHandler.post(() -> {
+                    if (newHolderIndex >= 0 && newHolderIndex < activePlayers.size()) {
+                        currentHolderIndex = newHolderIndex;
+                        currentPlayerWithPotato = activePlayers.get(newHolderIndex);
+                        currentPlayerWithPotato.givePotato();
+
+                        updateUIAfterPass();
+
+                        Log.d(TAG, "🥔 PASS received - new holder: " + currentPlayerWithPotato.name);
+                    }
+                });
+                break;
+        }
+    }
+
+    // Start the Hot Potato game
+    private void startHotPotatoGame() {
+        Log.d(TAG, "🎮 STARTING HOT POTATO");
+        Log.d(TAG, "Mode: " + mode + ", activePlayers: " + activePlayers.size());
+
+        // Validate we have players to start
+        if (activePlayers.isEmpty()) {
+            Log.e(TAG, "❌ Cannot start - no active players!");
+            timerText.setText("❌ No players to start game!");
+            return;
+        }
+
+        if (mode.equals("local") && activePlayers.size() < 2) {
+            timerText.setText("Need at least 2 players for local game!");
+            return;
+        }
+
+        Log.d(TAG, "🎯 Starting game with " + activePlayers.size() + " players: " + activePlayers.toString());
+
+        gameInProgress = true;
+
+        // Ensure first player has potato
+        if (currentPlayerWithPotato == null && !activePlayers.isEmpty()) {
+            currentPlayerWithPotato = activePlayers.get(0);
+            currentPlayerWithPotato.givePotato();
+            currentHolderIndex = 0;
+        }
+
+        // Hide UI elements
+        startGameButton.setVisibility(View.GONE);
+
+        // Show game UI
+        timerText.setVisibility(View.VISIBLE);
+
+        // Setup player positions
+        setupPlayerPositions();
+
+        // Show who starts with the potato
+        String firstPlayer = currentPlayerWithPotato != null ? currentPlayerWithPotato.name : "Unknown";
+        timerText.setText("🥔 " + firstPlayer + " starts with the potato!");
+
+        // Force enable all game states immediately
+        Log.d(TAG, "🔥 ENABLING GAME STATES");
+        gameInProgress = true;
+        potatoPassing = true;
+
+        // Enable touch zones
+        enableTapToPass();
+
+        // Show instruction immediately
+        if (tapInstructionText != null && currentPlayerWithPotato != null) {
+            tapInstructionText.setText(currentPlayerWithPotato.name + ": Tap anywhere to pass!");
+            tapInstructionText.setVisibility(View.VISIBLE);
+        }
+
+        Log.d(TAG, "🎮 Game started successfully!");
+    }
+
+    // Setup player positions based on count
+    private void setupPlayerPositions() {
+        // Hide all player containers first
+        findViewById(R.id.player1Container).setVisibility(View.GONE);
+        findViewById(R.id.player2Container).setVisibility(View.GONE);
+        findViewById(R.id.player3Container).setVisibility(View.GONE);
+        findViewById(R.id.player4Container).setVisibility(View.GONE);
+
+        // Show and setup based on active player count
+        for (int i = 0; i < activePlayers.size() && i < 4; i++) {
+            Player playerObj = activePlayers.get(i);
+            String playerName = playerObj.name;
+            setupPlayerPosition(i + 1, playerName);
+        }
+    }
+
+    private void setupPlayerPosition(int position, String name) {
+        int containerId = getPlayerContainerId(position);
+        int textId = getPlayerTextId(position);
+
+        View container = findViewById(containerId);
+        TextView nameText = findViewById(textId);
+
+        if (container != null) {
+            container.setVisibility(View.VISIBLE);
+        }
+
+        if (nameText != null) {
+            nameText.setText(name);
+        }
+    }
+
+    private int getPlayerContainerId(int position) {
+        switch (position) {
+            case 1: return R.id.player1Container;
+            case 2: return R.id.player2Container;
+            case 3: return R.id.player3Container;
+            case 4: return R.id.player4Container;
+            default: return R.id.player1Container;
+        }
+    }
+
+    private int getPlayerTextId(int position) {
+        switch (position) {
+            case 1: return R.id.player1Name;
+            case 2: return R.id.player2Name;
+            case 3: return R.id.player3Name;
+            case 4: return R.id.player4Name;
+            default: return R.id.player1Name;
+        }
+    }
+
+    // Setup simple tap zones for each player
+    private void setupPlayerTouchZones() {
+        playerTouchZones[0] = findViewById(R.id.player1Container);
+        playerTouchZones[1] = findViewById(R.id.player2Container);
+        playerTouchZones[2] = findViewById(R.id.player3Container);
+        playerTouchZones[3] = findViewById(R.id.player4Container);
+
+        Log.d(TAG, "Setting up tap zones for players");
+
+        for (int i = 0; i < 4; i++) {
+            if (playerTouchZones[i] != null) {
+                final int playerIndex = i;
+                Log.d(TAG, "Setting up tap zone for player " + (playerIndex + 1));
+
+                playerTouchZones[i].setOnTouchListener(new OnTouchListener() {
+                    @Override
+                    public boolean onTouch(View v, MotionEvent event) {
+                        Log.d(TAG, "🖐️ TOUCH EVENT - Player " + (playerIndex + 1) + " - action: " + event.getAction());
+                        Log.d(TAG, "   gameInProgress: " + gameInProgress + ", currentHolder: " + currentHolderIndex);
+
+                        // Allow tap on ACTION_DOWN for better responsiveness
+                        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                            // Allow current holder to pass
+                            boolean canPass = (currentHolderIndex == playerIndex) && gameInProgress;
+
+                            Log.d(TAG, "   canPass: " + canPass);
+
+                            if (canPass) {
+                                Log.d(TAG, "✅ TAP ALLOWED by player " + (playerIndex + 1) + " - PASSING POTATO!");
+                                passPotatoToNextPlayer();
+                                return true;
+                            } else {
+                                Log.d(TAG, "❌ TAP BLOCKED - Not your turn! Current holder is player " + (currentHolderIndex + 1));
+                            }
+                        }
+                        return false;
+                    }
+                });
+            } else {
+                Log.w(TAG, "Player container " + (i + 1) + " not found!");
+            }
+        }
+    }
+
+    // Pass potato to next player (simple sequential passing)
+    private void passPotatoToNextPlayer() {
+        if (activePlayers.isEmpty()) {
+            Log.d(TAG, "❌ Cannot pass - no players");
+            return;
+        }
+
+        if (activePlayers.size() < 2) {
+            Log.d(TAG, "❌ Cannot pass - need at least 2 players");
+            return;
+        }
+
+        int currentIndex = activePlayers.indexOf(currentPlayerWithPotato);
+        if (currentIndex == -1) {
+            Log.d(TAG, "❌ Current player with potato not found in active players");
+            Log.d(TAG, "   Current holder: " + (currentPlayerWithPotato != null ? currentPlayerWithPotato.name : "null"));
+            Log.d(TAG, "   Active players: " + activePlayers.toString());
+            return;
+        }
+
+        int nextIndex = (currentIndex + 1) % activePlayers.size();
+        Player targetPlayer = activePlayers.get(nextIndex);
+
+        Log.d(TAG, "🥔 Passing from player " + currentIndex + " (" + currentPlayerWithPotato.name +
+                   ") to player " + nextIndex + " (" + targetPlayer.name + ")");
+
+        passPotatoTo(targetPlayer);
+    }
+
+    /**
+     * Passes the potato from the current holder to a valid target player.
+     * This function is decoupled from the input method (tap, swipe, etc.).
+     *
+     * @param targetPlayer The player to receive the potato.
+     */
+    public void passPotatoTo(Player targetPlayer) {
+        // --- 1. Pre-condition Checks ---
+        if (!gameInProgress) {
+            Log.w(TAG, "Pass ignored: Game is not in progress.");
+            return;
+        }
+
+        if (currentPlayerWithPotato == null) {
+            Log.w(TAG, "Pass ignored: No one currently has the potato.");
+            return;
+        }
+
+        if (targetPlayer == null) {
+            Log.w(TAG, "Pass ignored: Target player is null.");
+            return;
+        }
+
+        if (targetPlayer == currentPlayerWithPotato) {
+            Log.w(TAG, "Pass ignored: Player cannot pass the potato to themselves.");
+            Log.w(TAG, "   Current holder: " + currentPlayerWithPotato.name + " (ID: " + currentPlayerWithPotato.id + ")");
+            Log.w(TAG, "   Target player: " + targetPlayer.name + " (ID: " + targetPlayer.id + ")");
+            Log.w(TAG, "   Active players count: " + activePlayers.size());
+            return;
+        }
+
+        if (!activePlayers.contains(targetPlayer)) {
+            Log.w(TAG, "Pass ignored: Target player " + targetPlayer.name + " is not in the active game.");
+            return;
+        }
+
+        if (!targetPlayer.canReceivePotato()) {
+            Log.w(TAG, "Pass ignored: Target player " + targetPlayer.name + " cannot receive potato.");
+            return;
+        }
+
+        // Apply cooldown
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastTouchTime < TOUCH_COOLDOWN) {
+            Log.d(TAG, "Pass ignored: Cooldown active");
+            return;
+        }
+        lastTouchTime = currentTime;
+
+        // --- 2. Execute the Pass ---
+        Player oldHolder = currentPlayerWithPotato;
+        Player newHolder = targetPlayer;
+
+        Log.i(TAG, "🥔 PASSING POTATO: From " + oldHolder.name + " to " + newHolder.name);
+
+        // Update state
+        oldHolder.takePotato();
+        newHolder.givePotato();
+        currentPlayerWithPotato = newHolder;
+
+        // Update index for compatibility
+        currentHolderIndex = activePlayers.indexOf(newHolder);
+
+        // --- 3. Post-pass Actions ---
+        updateUIAfterPass();
+        playPassSound();
+
+        // Broadcast to multiplayer if host (on background thread)
+        if (lanMultiplayerManager != null && mode.equals("multiplayer")) {
+            Intent intent = getIntent();
+            boolean isHost = intent.getBooleanExtra("isHost", false);
+            if (isHost) {
+                runNetworkOperation(() -> {
+                    try {
+                        lanMultiplayerManager.broadcastGameData("PASS:" + currentHolderIndex);
+                        Log.d(TAG, "📡 Successfully broadcast PASS:" + currentHolderIndex + " to " + newHolder.name);
+                    } catch (Exception e) {
+                        Log.e(TAG, "❌ Failed to broadcast pass: " + e.getMessage());
+                    }
                 });
             }
-        });
-        // Handle both ArrayList<String> and String[] for player names
-        ArrayList<String> names = null;
-        try {
-            names = getIntent().getStringArrayListExtra("names");
-        } catch (Exception e) {
-            Log.d(TAG, "Failed to get ArrayList, trying String array");
         }
-        
-        if (names == null) {
-            String[] nameArray = getIntent().getStringArrayExtra("names");
-            if (nameArray != null) {
-                names = new ArrayList<>();
-                for (String name : nameArray) {
-                    names.add(name);
+    }
+
+    // Update UI after potato pass
+    private void updateUIAfterPass() {
+        // Update instruction text
+        if (tapInstructionText != null && currentPlayerWithPotato != null) {
+            tapInstructionText.setText(currentPlayerWithPotato.name + ": Tap to pass the potato!");
+        }
+
+        // Show player change message briefly
+        if (timerText != null && currentPlayerWithPotato != null) {
+            String oldText = timerText.getText().toString();
+            timerText.setText("✋ " + currentPlayerWithPotato.name + " has the potato!");
+            uiHandler.postDelayed(() -> {
+                if (timerText != null) {
+                    timerText.setText(oldText);
                 }
-            }
+            }, 1500);
         }
-        
-        if (names != null && !names.isEmpty()) {
-            playerNames.clear();
-            playerNames.addAll(names);
-            gameView.setPlayerNames(playerNames);
-            gameView.setCurrentHolder(0);
+
+        Log.d(TAG, "🥔 Current potato holder: " + currentPlayerWithPotato.name + " (index: " + currentHolderIndex + ")");
+    }
+
+    private void playPassSound() {
+        // Play a sound effect
+        if (toneGenerator != null) {
+            toneGenerator.startTone(ToneGenerator.TONE_CDMA_PIP, 100);
         }
+        Log.d(TAG, "Playing pass sound.");
     }
 
-    private void setupHost() {
-        gameView.init(players, new GameView.GameListener() {
-            @Override public void onTick(long millisRemaining) { /* host uses own tick */ }
-            @Override public void onGameOver(String loserName) { /* host triggers manually */ }
-        });
-        gameView.setRemoteMode(true);
-        gameView.setPassCallback(this::advancePass);
+    // Enable tap-to-pass interaction
+    private void enableTapToPass() {
+        Log.d(TAG, "🟢 ENABLING TAP TO PASS - currentHolder: " + currentHolderIndex + ", players: " + activePlayers.size());
+        potatoPassing = true;
+        gameInProgress = true;
 
-        // Host name and initial state
-        currentHolder = 0;
-        // Don't clear playerNames - keep the lobby players
-        gameView.setPlayerNames(playerNames);
-        gameView.setCurrentHolder(currentHolder);
-
-        // Create room using unified multiplayer manager
-        multiplayerManager.createRoom(players);
-
-        // Start centralized game timer
-        startGameTimer();
-    }
-
-    // Centralized state broadcast system
-    private void broadcastCurrentState() {
-        // State broadcasting is handled automatically by the unified multiplayer manager
-        // through game event listeners and network-specific implementations
-        Log.d(TAG, "Current holder: " + currentHolder + ", Players: " + playerNames.size());
-    }
-
-    // Centralized game timer management
-    private void startGameTimer() {
-        // Stop any existing timer
-        stopGameTimer();
-        
-        hostStartTime = SystemClock.uptimeMillis();
-        hostBurnMs = 3500 + random.nextInt(4000);
-        tickRunnable = new Runnable() {
-            @Override public void run() {
-                long elapsed = SystemClock.uptimeMillis() - hostStartTime;
-                long remaining = Math.max(0, hostBurnMs - elapsed);
-                uiHandler.post(() -> timerText.setText("🔥 " + remaining + " ms"));
-                
-                // Centralized tick broadcast
-                if (multiplayerManager != null) {
-                    multiplayerManager.broadcastGameTick(remaining);
-                }
-                
-                if (remaining <= 0) {
-                    burnOut();
-                } else {
-                    tickHandler.postDelayed(this, 100);
-                }
-            }
-        };
-        tickHandler.post(tickRunnable);
-    }
-
-    private void stopGameTimer() {
-        if (tickRunnable != null) {
-            tickHandler.removeCallbacks(tickRunnable);
-            tickRunnable = null;
+        // Update instruction text with current player info
+        if (tapInstructionText != null && currentPlayerWithPotato != null) {
+            tapInstructionText.setText(currentPlayerWithPotato.name + ": Tap to pass the potato!");
+            tapInstructionText.setVisibility(View.VISIBLE);
+            Log.d(TAG, "✅ Instructions updated for: " + currentPlayerWithPotato.name);
         }
     }
 
-    private static final int LOBBY_DURATION_MS = 45000; // 45 seconds
-    private Handler lobbyHandler = new Handler();
-    private Runnable lobbyCountdownRunnable;
-    private long lobbyStartTime;
+    // Disable tap-to-pass interaction
+    private void disableTapToPass() {
+        potatoPassing = false;
 
-    private void startMatchmakingLobby() {
-        lobbyCountdownTextView.setVisibility(View.VISIBLE);
-        playerStatusTextView.setVisibility(View.VISIBLE);
-        startGameButton.setVisibility(View.VISIBLE);
-        startGameButton.setEnabled(false);
-        timerText.setVisibility(View.GONE); // Hide game timer during lobby
-
-        startGameButton.setOnClickListener(v -> {
-            lobbyHandler.removeCallbacks(lobbyCountdownRunnable);
-            lobbyCountdownTextView.setVisibility(View.GONE);
-            playerStatusTextView.setVisibility(View.GONE);
-            startGameButton.setVisibility(View.GONE);
-            timerText.setVisibility(View.VISIBLE);
-            
-            // Start the game using unified multiplayer manager
-            multiplayerManager.startGame();
-            setupHost();
-        });
-
-        playerNames.clear();
-        playerNames.add(selfName);
-        updatePlayerStatus();
-
-        // Create room using unified multiplayer manager
-        multiplayerManager.createRoom(players);
-
-        // Start lobby countdown
-        lobbyStartTime = SystemClock.uptimeMillis();
-        lobbyCountdownRunnable = new Runnable() {
-            @Override
-            public void run() {
-                long elapsed = SystemClock.uptimeMillis() - lobbyStartTime;
-                long remaining = LOBBY_DURATION_MS - elapsed;
-
-                if (remaining <= 0) {
-                    // Lobby timed out
-                    lobbyCountdownTextView.setText("Lobby: 0s");
-                    handleLobbyTimeout();
-                } else {
-                    lobbyCountdownTextView.setText("Lobby: " + (remaining / 1000) + "s");
-                    lobbyHandler.postDelayed(this, 1000);
-                }
-            }
-        };
-        lobbyHandler.post(lobbyCountdownRunnable);
-    }
-
-    private void handleLobbyTimeout() {
-        // Stop multiplayer manager
-        if (multiplayerManager != null) {
-            multiplayerManager.cleanup();
-        }
-        lobbyHandler.removeCallbacks(lobbyCountdownRunnable);
-
-        // Display message and offer retry/exit
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage("No players joined. Would you like to retry matchmaking?")
-                .setPositiveButton("Retry", (dialog, id) -> {
-                    // Restart matchmaking
-                    startMatchmakingLobby();
-                })
-                .setNegativeButton("Exit", (dialog, id) -> {
-                    // Exit to main menu
-                    finish();
-                });
-        builder.create().show();
-    }
-
-    private void setupClient() {
-        gameView.init(players, new GameView.GameListener() {
-            @Override public void onTick(long millisRemaining) { /* client uses host tick */ }
-            @Override public void onGameOver(String loserName) { /* client uses host burn */ }
-        });
-        gameView.setRemoteMode(true);
-
-        // Join room using unified multiplayer manager
-        if (roomCode != null && !roomCode.isEmpty()) {
-            multiplayerManager.joinRoom(roomCode);
-        } else {
-            // Auto-discover and join available rooms
-            // For now, just try to join with a default room code
-            multiplayerManager.joinRoom("AUTO");
-        }
-    }
-
-    // Method removed - now handled by UnifiedMultiplayerManager
-
-    private void advancePass() {
-        // Advance holder and reset timer
-        currentHolder = (currentHolder + 1) % Math.max(1, playerNames.size());
-        gameView.setCurrentHolder(currentHolder);
-        
-        // Notify multiplayer manager about potato pass
-        if (multiplayerManager != null && !playerNames.isEmpty()) {
-            String targetPlayerId = playerNames.get(currentHolder);
-            multiplayerManager.passPotatoTo(targetPlayerId);
-        }
-        
-        // Use centralized timer restart
-        startGameTimer();
-        
-        // Use centralized broadcast
-        broadcastCurrentState();
-    }
-
-    private void burnOut() {
-        String loserName = playerNames.isEmpty() ? "Player" : playerNames.get(currentHolder);
-        gameView.triggerBurn();
-        uiHandler.post(() -> {
-            timerText.setText("Game Over! " + loserName + " burned");
-            showOutcomeOverlay(loserName);
-            findViewById(R.id.endButtonsContainer).setVisibility(TextView.VISIBLE);
-            setupEndButtons();
-            updateWins(loserName);
-
-            // Submit score to leaderboard
-            leaderboardManager.submitScore("host_player", loserName, gameView.getScore(), "multiplayer");
-        });
-        if (multiplayerManager != null) {
-            multiplayerManager.broadcastGameOver(loserName);
-        }
-    }
-
-    private void setupEndButtons() {
-        findViewById(R.id.restartButton).setOnClickListener(v -> restartGame());
-        findViewById(R.id.homeButton).setOnClickListener(v -> finish());
-        findViewById(R.id.leaderboardButton).setOnClickListener(v -> {
-            Intent intent = new Intent(GameActivity.this, LeaderboardActivity.class);
-            startActivity(intent);
-        });
-    }
-
-    private void restartGame() {
-        recreate();
-    }
-
-    private void updateWins(String loserName) {
-        android.content.SharedPreferences prefs = getSharedPreferences("tato_wins", Context.MODE_PRIVATE);
-        android.content.SharedPreferences.Editor editor = prefs.edit();
-        for (String name : playerNames) {
-            if (name != null && !name.equals(loserName)) {
-                int current = prefs.getInt(name, 0);
-                int newWins = current + 1;
-                editor.putInt(name, newWins);
-                
-                // Update Firebase leaderboard
-                FirebaseManager.getInstance().submitScore(name, name, newWins, "local_game");
-            }
-        }
-        editor.apply();
-    }
-
-    private void showOutcomeOverlay(String loserName) {
-        // Implement the logic to show an overlay with the game outcome
-        // This could involve making a TextView or other layout visible and setting its text
-        // For now, let's just log it.
-        Log.d("GameActivity", "Game Over! Loser: " + loserName);
-
-        // Example: Make a TextView visible and set its text
-        TextView outcomeText = findViewById(R.id.outcomeText);
-        if (outcomeText != null) {
-            outcomeText.setText(getString(R.string.game_over_message, loserName));
-            outcomeText.setVisibility(View.VISIBLE);
-
-            // Animate the overlay to appear
-            outcomeText.setAlpha(0f);
-            outcomeText.setScaleX(0.5f);
-            outcomeText.setScaleY(0.5f);
-            outcomeText.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(500)
-                    .setInterpolator(new OvershootInterpolator())
-                    .start();
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        gameView.pause();
-        // Pause multiplayer connections to conserve resources
-        if (multiplayerManager != null) {
-            Log.i(Config.TAG_GAME, "Pausing multiplayer connections");
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        gameView.resume();
-        // Resume multiplayer connections if needed
-        if (multiplayerManager != null) {
-            Log.i(Config.TAG_GAME, "Resuming multiplayer connections");
+        // Hide instruction
+        if (tapInstructionText != null) {
+            tapInstructionText.setVisibility(View.GONE);
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        
-        // सफाई गर्नुहोस् (Cleanup)
-        if (tickHandler != null && tickRunnable != null) {
-            tickHandler.removeCallbacks(tickRunnable);
+
+        // Disable game states first
+        gameInProgress = false;
+        potatoPassing = false;
+
+        if (toneGenerator != null) {
+            toneGenerator.release();
+            toneGenerator = null;
         }
-        
-        if (lobbyHandler != null && lobbyCountdownRunnable != null) {
-            lobbyHandler.removeCallbacks(lobbyCountdownRunnable);
+
+        if (lanMultiplayerManager != null) {
+            try {
+                lanMultiplayerManager.cleanup();
+            } catch (Exception e) {
+                Log.w(TAG, "Error cleaning up multiplayer manager: " + e.getMessage());
+            }
         }
-        
-        if (multicastLock != null && multicastLock.isHeld()) {
-            multicastLock.release();
+
+        if (networkExecutor != null && !networkExecutor.isShutdown()) {
+            try {
+                networkExecutor.shutdownNow();
+                if (!networkExecutor.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS)) {
+                    Log.w(TAG, "Network executor did not terminate gracefully");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                Log.w(TAG, "Interrupted while waiting for executor shutdown");
+            } catch (Exception e) {
+                Log.w(TAG, "Error shutting down network executor: " + e.getMessage());
+            }
         }
-        
-        if (multiplayerManager != null) {
-            multiplayerManager.cleanup();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        disableTapToPass();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Resume passing if game was in progress
+        if (gameInProgress && currentPlayerWithPotato != null) {
+            enableTapToPass();
+        }
+    }
+
+    /**
+     * Utility method to run network operations safely in background thread
+     */
+    private void runNetworkOperation(Runnable networkOperation) {
+        if (networkExecutor != null && !networkExecutor.isShutdown()) {
+            try {
+                networkExecutor.execute(() -> {
+                    try {
+                        networkOperation.run();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Network operation failed: " + e.getMessage(), e);
+                        // Post error to UI thread if needed
+                        uiHandler.post(() -> {
+                            if (playerStatusTextView != null) {
+                                playerStatusTextView.setText("Network error: " + e.getMessage());
+                            }
+                        });
+                    }
+                });
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                Log.w(TAG, "Network executor is shutting down, cannot execute operation");
+                // Try to inform user if possible
+                uiHandler.post(() -> {
+                    if (playerStatusTextView != null) {
+                        playerStatusTextView.setText("Connection is shutting down");
+                    }
+                });
+            }
+        } else {
+            Log.w(TAG, "Network executor is not available");
+        }
+    }
+
+    /**
+     * Update host UI with current player count and status
+     */
+    private void updateHostUI() {
+        if (playerStatusTextView != null) {
+            StringBuilder playerList = new StringBuilder();
+            for (int i = 0; i < activePlayers.size(); i++) {
+                if (i > 0) playerList.append(", ");
+                playerList.append(activePlayers.get(i).name);
+            }
+            String status = "HOST: " + playerList.toString() + " | Room: " + (roomCode != null ? roomCode : "Unknown");
+            if (activePlayers.size() >= 2) {
+                status += " | Ready to start!";
+            }
+            playerStatusTextView.setText(status);
+        }
+
+        // Update main timer text based on player count
+        if (timerText != null) {
+            if (activePlayers.size() >= 2) {
+                timerText.setText("HOST - " + activePlayers.size() + " players connected. Ready to start!");
+            } else {
+                timerText.setText("HOST - Waiting for players to join... (" + activePlayers.size() + "/2)");
+            }
+        }
+    }
+
+    /**
+     * Check if there are existing players connected (for transferred connections)
+     */
+    private void checkForExistingPlayers() {
+        if (lanMultiplayerManager != null) {
+            // Get connected players from the multiplayer manager
+            try {
+                List<String> connectedPlayerNames = lanMultiplayerManager.getConnectedPlayerNames();
+                if (connectedPlayerNames != null && connectedPlayerNames.size() > 1) { // More than just host
+                    Log.d(TAG, "🔄 Found existing connected players: " + connectedPlayerNames.size());
+
+                    // Add missing players to activePlayers
+                    for (String playerName : connectedPlayerNames) {
+                        boolean playerExists = false;
+                        for (Player player : activePlayers) {
+                            if (player.name.equals(playerName)) {
+                                playerExists = true;
+                                break;
+                            }
+                        }
+
+                        if (!playerExists && !playerName.equals(activePlayers.get(0).name)) {
+                            Player newPlayer = new Player(playerName);
+                            newPlayer.layoutPosition = activePlayers.size();
+                            activePlayers.add(newPlayer);
+                            playerNames.add(playerName);
+                            Log.d(TAG, "🔄 Added existing player: " + playerName);
+                        }
+                    }
+
+                    setupPlayerPositions();
+                    updateHostUI();
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Error checking existing players: " + e.getMessage());
+            }
         }
     }
 }

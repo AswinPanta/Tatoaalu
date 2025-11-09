@@ -1,0 +1,33 @@
+# Hot Potato Music Files
+
+This directory should contain your music files for the Hot Potato game.
+
+## How to Add Music:
+
+1. Copy your music files to this directory
+2. Rename them to: song1.mp3, song2.mp3, song3.mp3, etc.
+3. Supported formats: MP3, WAV, OGG, M4A
+
+## Example files to add:
+- song1.mp3
+- song2.mp3
+- song3.mp3
+- song4.mp3
+- song5.mp3
+
+## Requirements:
+- Files should be 30 seconds to 2 minutes long
+- Keep file sizes reasonable (under 5MB each)
+- Use consistent volume levels across all files
+- Upbeat, party-style music works best
+
+## Free Music Sources:
+- YouTube Audio Library
+- Freesound.org
+- Zapsplat (free tier)
+- Local music (ensure you have rights to use)
+
+## Note:
+If no music files are present, the game will use a timer-based fallback system that still provides the same random 10-30 second gameplay timing without actual music playback.
+
+The game will automatically detect and use any properly named music files in this directory.

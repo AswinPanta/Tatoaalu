@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout 
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:lottie="http://schemas.android.com/apk/res-auto"
@@ -33,12 +33,12 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Circular Timer Progress -->
+    <!-- CENTER: Circular Timer Progress -->
     <ProgressBar
         android:id="@+id/timerProgress"
         style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="220dp"
-        android:layout_height="220dp"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
         android:progressDrawable="@drawable/timer_ring"
         android:max="100"
         android:rotation="-90"
@@ -49,41 +49,226 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- Animated Potato SVG -->
+    <!-- CENTER: Animated Potato -->
     <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/potatoAnim"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
         app:lottie_rawRes="@raw/potato_glow"
         app:lottie_autoPlay="false"
+        app:layout_constraintTop_toTopOf="@id/timerProgress"
+        app:layout_constraintBottom_toBottomOf="@id/timerProgress"
+        app:layout_constraintStart_toStartOf="@id/timerProgress"
+        app:layout_constraintEnd_toEndOf="@id/timerProgress"/>
+
+    <!-- FLYING POTATO: Animated potato that moves between players -->
+    <ImageView
+        android:id="@+id/flyingPotato"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:src="@drawable/potato"
+        android:scaleType="centerCrop"
+        android:elevation="10dp"
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="100dp"
+        android:layout_marginStart="100dp"/>
+
+    <!-- PLAYER 1: Top-Left Corner (Always present for 2+ players) -->
+    <LinearLayout
+        android:id="@+id/player1Container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="32dp"
+        android:layout_marginStart="16dp">
+
+        <ImageView
+            android:id="@+id/player1Avatar"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/avatar_red"
+            android:scaleType="centerCrop"
+            android:background="@drawable/player_avatar_optimized"/>
+
+        <TextView
+            android:id="@+id/player1Name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Player 1"
+            android:textColor="@color/flame_cream"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"/>
+
+        <ImageView
+            android:id="@+id/player1Indicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/potato"
+            android:visibility="gone"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- PLAYER 2: Bottom-Right Corner (For 2+ players) -->
+    <LinearLayout
+        android:id="@+id/player2Container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="120dp"
+        android:layout_marginEnd="16dp">
+
+        <ImageView
+            android:id="@+id/player2Avatar"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/avatar_red"
+            android:scaleType="centerCrop"
+            android:background="@drawable/player_avatar_optimized"/>
+
+        <TextView
+            android:id="@+id/player2Name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Player 2"
+            android:textColor="@color/flame_cream"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"/>
+
+        <ImageView
+            android:id="@+id/player2Indicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/potato"
+            android:visibility="gone"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- PLAYER 3: Top-Right Corner (For 3+ players) -->
+    <LinearLayout
+        android:id="@+id/player3Container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="16dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="16dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/player3Avatar"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/avatar_red"
+            android:scaleType="centerCrop"
+            android:background="@drawable/player_avatar_optimized"/>
+
+        <TextView
+            android:id="@+id/player3Name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Player 3"
+            android:textColor="@color/flame_cream"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"/>
+
+        <ImageView
+            android:id="@+id/player3Indicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/potato"
+            android:visibility="gone"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- PLAYER 4: Bottom-Left Corner (For 4 players) -->
+    <LinearLayout
+        android:id="@+id/player4Container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:layout_marginBottom="120dp"
+        android:layout_marginStart="16dp"
+        android:visibility="gone">
 
-    <!-- Player Avatar (Top) -->
-    <ImageView
-        android:id="@+id/player1"
-        android:src="@drawable/avatar_red"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginBottom="24dp"
-        app:layout_constraintBottom_toTopOf="@id/potatoAnim"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        <ImageView
+            android:id="@+id/player4Avatar"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/avatar_red"
+            android:scaleType="centerCrop"
+            android:background="@drawable/player_avatar_optimized"/>
 
-    <!-- Timer Text -->
+        <TextView
+            android:id="@+id/player4Name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Player 4"
+            android:textColor="@color/flame_cream"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"/>
+
+        <ImageView
+            android:id="@+id/player4Indicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/potato"
+            android:visibility="gone"
+            android:layout_marginTop="4dp"/>
+    </LinearLayout>
+
+    <!-- CENTER: Timer Text -->
     <TextView
         android:id="@+id/timerText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="🔥 Hot Potato"
         android:textColor="#FFC107"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:fontFamily="sans-serif-medium"
-        android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/potatoAnim"
+        android:textAlignment="center"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@id/timerProgress"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- TAP INSTRUCTION: Shows when music is playing -->
+    <TextView
+        android:id="@+id/tapInstructionText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="👆 TAP SCREEN TO PASS! 👆"
+        android:textColor="#FF5722"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-black"
+        android:textAlignment="center"
+        android:background="#33FFFFFF"
+        android:padding="8dp"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/timerText"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
@@ -94,7 +279,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Lobby: 45s"
-        android:textSize="18sp"
+        android:textSize="16sp"
         android:textColor="#FFC107"
         android:fontFamily="sans-serif-medium"
         android:visibility="gone"
@@ -109,7 +294,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Waiting for players..."
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:textColor="#FFFFFF"
         android:fontFamily="sans-serif"
         android:visibility="gone"
@@ -123,7 +308,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/countdown_started"
-        android:textSize="28sp"
+        android:textSize="32sp"
         android:textStyle="bold"
         android:textColor="#FF5722"
         android:fontFamily="sans-serif-black"
@@ -138,7 +323,7 @@
         android:id="@+id/startGameButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="100dp"
+        android:layout_marginBottom="80dp"
         android:text="Start Game"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
@@ -181,17 +366,8 @@
             android:text="@string/btn_home"
             android:textColor="#FFFFFF"
             android:backgroundTint="#FFC107"
-            android:layout_marginHorizontal="4dp"/>
-
-        <Button
-            android:id="@+id/leaderboardButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/btn_leaderboard"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#FF5722"
             android:layout_marginStart="8dp"/>
+
     </LinearLayout>
 
     <!-- Outcome overlay -->

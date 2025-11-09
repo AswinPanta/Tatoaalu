@@ -5,15 +5,10 @@
         <item>3</item>
         <item>4</item>
     </string-array>
-    
+
     <string-array name="game_modes">
         <item>Hot Potato</item>
-        <item>Musical Chairs</item>
     </string-array>
-    
-    <string-array name="connection_modes">
-        <item>Auto (LAN → Firebase)</item>
-        <item>LAN Only</item>
-        <item>Firebase Only</item>
-    </string-array>
+
+
 </resources>

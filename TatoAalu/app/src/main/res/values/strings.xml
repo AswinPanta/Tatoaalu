@@ -10,8 +10,7 @@
     <string name="title_main">Tato Aalu</string>
     <string name="btn_quick_play">Quick Play (Local)</string>
     <string name="label_players">Players:</string>
-    <string name="btn_host">Host Multiplayer</string>
-    <string name="btn_join">Join Multiplayer</string>
+    <string name="btn_lan_browser">🌐 Browse LAN Games</string>
 
     <!-- Tagline -->
     <string name="tagline_main">Fast reflexes. Hot potato. Big laughs.</string>
@@ -25,11 +24,25 @@
 
     <string name="btn_restart">Restart</string>
     <string name="btn_home">Home</string>
-    <string name="btn_leaderboard">Leaderboard</string>
-    <string name="leaderboard_title">Leaderboard</string>
     <string name="back">Back</string>
     <string name="hint_player_1">Player 1 Name</string>
     <string name="hint_player_2">Player 2 Name</string>
     <string name="hint_player_3">Player 3 Name</string>
     <string name="hint_player_4">Player 4 Name</string>
+
+    <!-- LAN Browser strings -->
+    <string name="lan_browser_title">LAN Games</string>
+    <string name="lan_browser_searching">🔍 Searching for Hot Potato games...</string>
+    <string name="lan_browser_no_games">📡 No games found. Create one or refresh to search again.</string>
+    <string name="lan_browser_create_room">🏠 Create Room</string>
+    <string name="lan_browser_join_room">Join</string>
+    <string name="lan_browser_room_full">ROOM FULL</string>
+    <string name="lan_browser_available">Available</string>
+    <string name="lan_browser_refresh">🔄 Search Again</string>
+    <string name="lan_browser_your_name">Your Name:</string>
+    <string name="lan_browser_enter_name">Enter your name</string>
+    <string name="lan_browser_room_created">Room created! Share code:</string>
+    <string name="lan_browser_joined_room">Successfully joined the game!</string>
+    <string name="lan_browser_connection_error">Connection error:</string>
+    <string name="lan_browser_games_found">🎮 Found %d games (%d joinable)</string>
 </resources>

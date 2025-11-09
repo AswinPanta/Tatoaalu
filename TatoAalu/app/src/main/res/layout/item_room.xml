@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginVertical="4dp"
+    android:layout_marginHorizontal="8dp"
+    app:cardUseCompatPadding="true"
+    app:cardElevation="4dp"
+    app:strokeColor="@color/flame_cream"
+    app:strokeWidth="1dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackground">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- Room Icon -->
+        <ImageView
+            android:id="@+id/roomIcon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/potato"
+            app:tint="@color/flame_orange"
+            android:contentDescription="Room icon"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
+
+        <!-- Room Code -->
+        <TextView
+            android:id="@+id/roomCodeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Room 1234"
+            android:textColor="@color/flame_cream"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginStart="12dp"
+            app:layout_constraintTop_toTopOf="@id/roomIcon"
+            app:layout_constraintStart_toEndOf="@id/roomIcon"/>
+
+        <!-- Host Name -->
+        <TextView
+            android:id="@+id/hostNameText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hosted by Player1"
+            android:textColor="@color/on_black_muted"
+            android:textSize="14sp"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            app:layout_constraintTop_toBottomOf="@id/roomCodeText"
+            app:layout_constraintStart_toEndOf="@id/roomIcon"/>
+
+        <!-- Player Count Badge -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/playerCountCard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:cardUseCompatPadding="false"
+            app:cardElevation="2dp"
+            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="@color/flame_orange"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/joinButton"
+            android:layout_marginEnd="8dp">
+
+            <TextView
+                android:id="@+id/playerCountText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="2/4"
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"/>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Join Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/joinButton"
+            style="@style/Widget.Material3.Button.ElevatedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Join"
+            android:textColor="@color/on_black_muted"
+            android:textSize="12sp"
+            app:icon="@android:drawable/ic_menu_send"
+            app:iconSize="16dp"
+            app:iconPadding="4dp"
+            android:minWidth="80dp"
+            android:minHeight="36dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- Connection Quality Indicator -->
+        <ImageView
+            android:id="@+id/signalIcon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@android:drawable/ic_dialog_info"
+            app:tint="@color/flame_green"
+            android:contentDescription="Signal strength"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/roomIcon"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"/>
+
+        <!-- Status Text -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Available"
+            android:textColor="@color/flame_green"
+            android:textSize="12sp"
+            android:layout_marginStart="4dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/signalIcon"
+            app:layout_constraintEnd_toStartOf="@id/playerCountCard"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Room Full Overlay (hidden by default) -->
+        <View
+            android:id="@+id/roomFullOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+        <!-- Room Full Text -->
+        <TextView
+            android:id="@+id/roomFullText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ROOM FULL"
+            android:textColor="@color/flame_red"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:background="#CC000000"
+            android:padding="8dp"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</com.google.android.material.card.MaterialCardView>
